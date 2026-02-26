@@ -1,0 +1,193 @@
+// Prisma Schema for NestJS ERP Infrastructure
+// This schema defines the base models for multi-tenant ERP system
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// Tenant model for multi-tenancy
+model Tenant {
+  id        String   @id @default(uuid())
+  name      String
+  slug      String   @unique
+  isActive  Boolean  @default(true)
+  
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  deletedAt DateTime?
+  
+  createdBy String?
+  updatedBy String?
+  
+  // Relations
+  users     User[]
+  auditLogs AuditLog[]
+  
+  @@map("tenants")
+  @@index([slug])
+  @@index([isActive])
+}
+
+// User model for authentication
+model User {
+  id        String   @id @default(uuid())
+  email     String   @unique
+  password  String
+  firstName String
+  lastName  String
+  isActive  Boolean  @default(true)
+  
+  tenantId  String
+  tenant    Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  deletedAt DateTime?
+  
+  createdBy String?
+  updatedBy String?
+  
+  // Relations
+  roles     UserRole[]
+  auditLogs AuditLog[]
+  
+  @@map("users")
+  @@index([tenantId])
+  @@index([email])
+  @@index([isActive])
+}
+
+// Role model for RBAC
+model Role {
+  id          String   @id @default(uuid())
+  name        String   @unique
+  description String?
+  
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  deletedAt DateTime?
+  
+  createdBy String?
+  updatedBy String?
+  
+  // Relations
+  permissions RolePermission[]
+  users       UserRole[]
+  
+  @@map("roles")
+  @@index([name])
+}
+
+// Permission model
+model Permission {
+  id          String   @id @default(uuid())
+  name        String   @unique
+  resource    String
+  action      String
+  description String?
+  
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  deletedAt DateTime?
+  
+  createdBy String?
+  updatedBy String?
+  
+  // Relations
+  roles RolePermission[]
+  
+  @@map("permissions")
+  @@unique([resource, action])
+  @@index([resource])
+  @@index([action])
+}
+
+// Junction table: User-Role (many-to-many)
+model UserRole {
+  userId String
+  roleId String
+  
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  role Role @relation(fields: [roleId], references: [id], onDelete: Cascade)
+  
+  assignedAt DateTime @default(now())
+  assignedBy String?
+  
+  @@id([userId, roleId])
+  @@map("user_roles")
+  @@index([userId])
+  @@index([roleId])
+}
+
+// Junction table: Role-Permission (many-to-many)
+model RolePermission {
+  roleId       String
+  permissionId String
+  
+  role       Role       @relation(fields: [roleId], references: [id], onDelete: Cascade)
+  permission Permission @relation(fields: [permissionId], references: [id], onDelete: Cascade)
+  
+  grantedAt DateTime @default(now())
+  grantedBy String?
+  
+  @@id([roleId, permissionId])
+  @@map("role_permissions")
+  @@index([roleId])
+  @@index([permissionId])
+}
+
+// Audit log model for tracking changes
+model AuditLog {
+  id        String   @id @default(uuid())
+  
+  userId    String?
+  user      User?    @relation(fields: [userId], references: [id], onDelete: SetNull)
+  
+  tenantId  String?
+  tenant    Tenant?  @relation(fields: [tenantId], references: [id], onDelete: SetNull)
+  
+  entity    String
+  entityId  String
+  action    String   // CREATE, UPDATE, DELETE
+  
+  oldValue  Json?
+  newValue  Json?
+  
+  ipAddress String?
+  userAgent String?
+  
+  createdAt DateTime @default(now())
+  
+  @@map("audit_logs")
+  @@index([entity, entityId])
+  @@index([userId])
+  @@index([tenantId])
+  @@index([createdAt])
+  @@index([action])
+}
+
+// System configuration model
+model SystemConfig {
+  id    String @id @default(uuid())
+  key   String @unique
+  value Json
+  
+  description String?
+  isPublic    Boolean @default(false)
+  
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  deletedAt DateTime?
+  
+  createdBy String?
+  updatedBy String?
+  
+  @@map("system_config")
+  @@index([key])
+  @@index([isPublic])
+}
