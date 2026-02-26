@@ -18,7 +18,13 @@ import { ConfigService } from './config.service';
   imports: [
     NestConfigModule.forRoot({
       isGlobal: true,
-      load: [configuration, databaseConfig, cacheConfig, queueConfig, apiConfig],
+      load: [
+        configuration,
+        databaseConfig,
+        cacheConfig,
+        queueConfig,
+        apiConfig,
+      ],
       validationSchema: configValidationSchema,
       validationOptions: {
         allowUnknown: true,

@@ -23,6 +23,7 @@ export class ConfigService {
     'secret',
     'token',
     'key',
+    'url', // Database URLs often contain credentials
   ];
 
   // Cache for hot-reloadable configuration values
@@ -45,9 +46,11 @@ export class ConfigService {
    * @param key Configuration key (supports dot notation for nested values)
    * @param defaultValue Optional default value
    */
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   get<T = any>(key: string, defaultValue?: T): T {
     // Check hot-reload cache first for reloadable keys
     if (this.hotReloadableKeys.includes(key) && this.hotReloadCache.has(key)) {
+      // eslint-disable-next-line @typescript-eslint/no-unsafe-return
       return this.hotReloadCache.get(key) as T;
     }
 
@@ -58,7 +61,54 @@ export class ConfigService {
    * Get all configuration as typed object
    */
   getAll(): AppConfig {
-    return this.nestConfigService.get<AppConfig>('') as AppConfig;
+    // Build the config object from individual keys
+    return {
+      app: {
+        name: this.get('app.name', 'NestJS ERP'),
+        port: this.get<number>('app.port', 3000),
+        environment: this.get('app.environment', 'development'),
+        apiPrefix: this.get('app.apiPrefix', 'api'),
+      },
+      database: {
+        url: this.get('database.url'),
+        poolSize: this.get<number>('database.poolSize', 10),
+        connectionTimeout: this.get<number>('database.connectionTimeout', 30000),
+        readReplicaUrl: this.get('database.readReplicaUrl'),
+      },
+      cache: {
+        host: this.get('cache.host'),
+        port: this.get<number>('cache.port', 6379),
+        password: this.get('cache.password'),
+        ttl: this.get<number>('cache.ttl', 3600),
+        maxMemory: this.get('cache.maxMemory', '100mb'),
+      },
+      queue: {
+        host: this.get('queue.host'),
+        port: this.get<number>('queue.port', 6379),
+        password: this.get('queue.password'),
+        defaultJobAttempts: this.get<number>('queue.defaultJobAttempts', 3),
+      },
+      auth: {
+        jwtSecret: this.get('auth.jwtSecret'),
+        jwtExpiresIn: this.get('auth.jwtExpiresIn', '15m'),
+        refreshTokenExpiresIn: this.get('auth.refreshTokenExpiresIn', '7d'),
+        bcryptRounds: this.get<number>('auth.bcryptRounds', 10),
+      },
+      api: {
+        graphql: {
+          enabled: this.get<boolean>('api.graphql.enabled', true),
+          playground: this.get<boolean>('api.graphql.playground', true),
+          introspection: this.get<boolean>('api.graphql.introspection', true),
+        },
+        grpc: {
+          enabled: this.get<boolean>('api.grpc.enabled', true),
+          url: this.get('api.grpc.url', '0.0.0.0:5000'),
+        },
+      },
+      logging: {
+        level: this.get('logging.level', 'info'),
+      },
+    } as AppConfig;
   }
 
   /**
@@ -85,6 +135,7 @@ export class ConfigService {
    * @param key Configuration key
    * @param value Configuration value
    */
+
   maskValue(key: string, value: any): string {
     if (!this.isSensitive(key)) {
       return String(value);
@@ -124,6 +175,7 @@ export class ConfigService {
    * Recursively mask sensitive values in an object
    * @param obj Object to mask
    */
+
   private maskObject(obj: any): any {
     if (obj === null || obj === undefined) {
       return obj;
@@ -138,12 +190,15 @@ export class ConfigService {
     }
 
     const masked: Record<string, any> = {};
+    // eslint-disable-next-line @typescript-eslint/no-unsafe-argument
     for (const [key, value] of Object.entries(obj)) {
       if (this.isSensitive(key)) {
+        // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
         masked[key] = this.maskValue(key, value);
       } else if (typeof value === 'object') {
         masked[key] = this.maskObject(value);
       } else {
+        // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
         masked[key] = value;
       }
     }
@@ -157,6 +212,7 @@ export class ConfigService {
    * @param value New configuration value
    * @throws Error if key is not hot-reloadable
    */
+
   hotReload(key: string, value: any): void {
     if (!this.hotReloadableKeys.includes(key)) {
       throw new Error(
@@ -177,6 +233,7 @@ export class ConfigService {
    * @param key Configuration key
    * @param value New value to validate
    */
+
   private validateHotReloadValue(key: string, value: any): void {
     switch (key) {
       case 'LOG_LEVEL':
@@ -189,6 +246,7 @@ export class ConfigService {
 
       case 'CACHE_TTL':
       case 'QUEUE_DEFAULT_JOB_ATTEMPTS':
+        // eslint-disable-next-line @typescript-eslint/no-unsafe-argument
         if (typeof value !== 'number' || value < 0) {
           throw new Error(`${key} must be a non-negative number`);
         }

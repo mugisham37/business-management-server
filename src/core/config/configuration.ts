@@ -108,7 +108,6 @@ export default (): AppConfig => ({
     },
   },
   logging: {
-    level: (process.env.LOG_LEVEL ||
-      'info') as AppConfig['logging']['level'],
+    level: (process.env.LOG_LEVEL || 'info') as AppConfig['logging']['level'],
   },
 });
