@@ -1,18 +1,21 @@
-import { Injectable, Logger, OnModuleDestroy } from '@nestjs/common';
+import { Injectable, OnModuleDestroy } from '@nestjs/common';
 import Redis from 'ioredis';
 import { ICacheService } from './interfaces/cache.interface';
 import type { CacheOptions } from './interfaces/cache-options.interface';
+import { LoggerService } from '../logging/logger.service';
 
 /**
  * Redis service providing connection pooling and cache operations
  */
 @Injectable()
 export class RedisService implements ICacheService, OnModuleDestroy {
-  private readonly logger = new Logger(RedisService.name);
+  private readonly logger: LoggerService;
   private readonly client: Redis;
   private readonly defaultTtl: number;
 
-  constructor(options: CacheOptions) {
+  constructor(options: CacheOptions, loggerService: LoggerService) {
+    this.logger = loggerService;
+    this.logger.setContext('RedisService');
     this.defaultTtl = options.ttl;
 
     // Create Redis client with connection pooling and retry logic
@@ -49,15 +52,15 @@ export class RedisService implements ICacheService, OnModuleDestroy {
 
     // Connection event handlers
     this.client.on('connect', () => {
-      this.logger.log('Redis client connected');
+      this.logger.info('Redis client connected');
     });
 
     this.client.on('ready', () => {
-      this.logger.log('Redis client ready');
+      this.logger.info('Redis client ready');
     });
 
     this.client.on('error', (error) => {
-      this.logger.error('Redis client error:', error);
+      this.logger.error('Redis client error:', error.stack);
     });
 
     this.client.on('close', () => {
@@ -65,7 +68,7 @@ export class RedisService implements ICacheService, OnModuleDestroy {
     });
 
     this.client.on('reconnecting', () => {
-      this.logger.log('Redis client reconnecting');
+      this.logger.info('Redis client reconnecting');
     });
   }
 
@@ -73,14 +76,33 @@ export class RedisService implements ICacheService, OnModuleDestroy {
    * Get a value from cache
    */
   async get<T>(key: string): Promise<T | null> {
+    const startTime = Date.now();
     try {
       const value = await this.client.get(key);
+      const duration = Date.now() - startTime;
+      
       if (value === null) {
+        this.logger.logWithMetadata('debug', 'Cache miss', {
+          key,
+          duration,
+          status: 'miss',
+        });
         return null;
       }
+      
+      this.logger.logWithMetadata('debug', 'Cache hit', {
+        key,
+        duration,
+        status: 'hit',
+      });
       return JSON.parse(value) as T;
     } catch (error) {
-      this.logger.error(`Error getting key ${key}:`, error);
+      const duration = Date.now() - startTime;
+      this.logger.logWithMetadata('error', `Error getting key ${key}`, {
+        key,
+        duration,
+        error: error.message,
+      });
       return null;
     }
   }
@@ -89,6 +111,7 @@ export class RedisService implements ICacheService, OnModuleDestroy {
    * Set a value in cache
    */
   async set<T>(key: string, value: T, ttl?: number): Promise<void> {
+    const startTime = Date.now();
     try {
       const serialized = JSON.stringify(value);
       const ttlSeconds = ttl || this.defaultTtl;
@@ -98,8 +121,20 @@ export class RedisService implements ICacheService, OnModuleDestroy {
       } else {
         await this.client.set(key, serialized);
       }
+      
+      const duration = Date.now() - startTime;
+      this.logger.logWithMetadata('debug', 'Cache set', {
+        key,
+        ttl: ttlSeconds,
+        duration,
+      });
     } catch (error) {
-      this.logger.error(`Error setting key ${key}:`, error);
+      const duration = Date.now() - startTime;
+      this.logger.logWithMetadata('error', `Error setting key ${key}`, {
+        key,
+        duration,
+        error: error.message,
+      });
       throw error;
     }
   }

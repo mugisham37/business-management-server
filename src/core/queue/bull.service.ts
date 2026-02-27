@@ -1,4 +1,4 @@
-import { Injectable, OnModuleDestroy, Logger } from '@nestjs/common';
+import { Injectable, OnModuleDestroy } from '@nestjs/common';
 import Bull from 'bull';
 import type { Queue, Job, JobOptions } from 'bull';
 import {
@@ -7,13 +7,20 @@ import {
   QueueStatus,
   JobData,
 } from './interfaces';
+import { LoggerService } from '../logging/logger.service';
 
 @Injectable()
 export class BullService implements OnModuleDestroy {
-  private readonly logger = new Logger(BullService.name);
+  private readonly logger: LoggerService;
   private readonly queues: Map<QueueName, Queue> = new Map();
 
-  constructor(private readonly config: { redis: { host: string; port: number; password?: string } }) {}
+  constructor(
+    private readonly config: { redis: { host: string; port: number; password?: string } },
+    loggerService: LoggerService,
+  ) {
+    this.logger = loggerService;
+    this.logger.setContext('BullService');
+  }
 
   /**
    * Initialize a queue with the given configuration
@@ -41,8 +48,49 @@ export class BullService implements OnModuleDestroy {
       },
     });
 
+    // Add event listeners for job lifecycle logging
+    queue.on('active', (job: Job) => {
+      this.logger.logWithMetadata('info', `Job started`, {
+        queue: queueName,
+        jobId: job.id,
+        jobName: job.name,
+        status: 'active',
+      });
+    });
+
+    queue.on('completed', (job: Job, result: any) => {
+      this.logger.logWithMetadata('info', `Job completed`, {
+        queue: queueName,
+        jobId: job.id,
+        jobName: job.name,
+        status: 'completed',
+        duration: job.finishedOn ? job.finishedOn - job.processedOn! : 0,
+      });
+    });
+
+    queue.on('failed', (job: Job, error: Error) => {
+      this.logger.logWithMetadata('error', `Job failed`, {
+        queue: queueName,
+        jobId: job.id,
+        jobName: job.name,
+        status: 'failed',
+        attemptsMade: job.attemptsMade,
+        error: error.message,
+        stack: error.stack,
+      });
+    });
+
+    queue.on('stalled', (job: Job) => {
+      this.logger.logWithMetadata('warn', `Job stalled`, {
+        queue: queueName,
+        jobId: job.id,
+        jobName: job.name,
+        status: 'stalled',
+      });
+    });
+
     this.queues.set(queueName, queue);
-    this.logger.log(`Queue "${queueName}" initialized`);
+    this.logger.info(`Queue "${queueName}" initialized`);
 
     return queue;
   }
@@ -90,7 +138,7 @@ export class BullService implements OnModuleDestroy {
         cron: cronExpression,
       },
     });
-    this.logger.log(
+    this.logger.info(
       `Scheduled job "${jobName}" added to queue "${queueName}" with cron: ${cronExpression}`,
     );
     return job;
@@ -161,7 +209,7 @@ export class BullService implements OnModuleDestroy {
   async pauseQueue(queueName: QueueName): Promise<void> {
     const queue = this.getQueue(queueName);
     await queue.pause();
-    this.logger.log(`Queue "${queueName}" paused`);
+    this.logger.info(`Queue "${queueName}" paused`);
   }
 
   /**
@@ -170,7 +218,7 @@ export class BullService implements OnModuleDestroy {
   async resumeQueue(queueName: QueueName): Promise<void> {
     const queue = this.getQueue(queueName);
     await queue.resume();
-    this.logger.log(`Queue "${queueName}" resumed`);
+    this.logger.info(`Queue "${queueName}" resumed`);
   }
 
   /**
@@ -216,7 +264,7 @@ export class BullService implements OnModuleDestroy {
   ): Promise<void> {
     const queue = this.getQueue(queueName);
     await queue.removeRepeatableByKey(`${jobName}:${repeatOptions.cron}`);
-    this.logger.log(`Repeatable job "${jobName}" removed from queue "${queueName}"`);
+    this.logger.info(`Repeatable job "${jobName}" removed from queue "${queueName}"`);
   }
 
   /**
@@ -278,7 +326,7 @@ export class BullService implements OnModuleDestroy {
     // Remove from dead letter queue
     await dlqJob.remove();
 
-    this.logger.log(
+    this.logger.info(
       `Job ${dlqJobId} retried from dead letter queue to "${jobData.originalQueue}"`,
     );
 
@@ -302,7 +350,7 @@ export class BullService implements OnModuleDestroy {
   async cleanCompletedJobs(queueName: QueueName, grace: number = 0): Promise<void> {
     const queue = this.getQueue(queueName);
     await queue.clean(grace, 'completed');
-    this.logger.log(`Cleaned completed jobs from queue "${queueName}"`);
+    this.logger.info(`Cleaned completed jobs from queue "${queueName}"`);
   }
 
   /**
@@ -311,7 +359,7 @@ export class BullService implements OnModuleDestroy {
   async cleanFailedJobs(queueName: QueueName, grace: number = 0): Promise<void> {
     const queue = this.getQueue(queueName);
     await queue.clean(grace, 'failed');
-    this.logger.log(`Cleaned failed jobs from queue "${queueName}"`);
+    this.logger.info(`Cleaned failed jobs from queue "${queueName}"`);
   }
 
   /**
@@ -330,7 +378,7 @@ export class BullService implements OnModuleDestroy {
     const job = await this.getJob(queueName, jobId);
     if (job) {
       await job.retry();
-      this.logger.log(`Job ${jobId} from queue "${queueName}" retried`);
+      this.logger.info(`Job ${jobId} from queue "${queueName}" retried`);
     }
   }
 
@@ -341,7 +389,7 @@ export class BullService implements OnModuleDestroy {
     const job = await this.getJob(queueName, jobId);
     if (job) {
       await job.promote();
-      this.logger.log(`Job ${jobId} from queue "${queueName}" promoted`);
+      this.logger.info(`Job ${jobId} from queue "${queueName}" promoted`);
     }
   }
 
@@ -368,12 +416,12 @@ export class BullService implements OnModuleDestroy {
    * Clean up on module destroy
    */
   async onModuleDestroy(): Promise<void> {
-    this.logger.log('Closing all queues...');
+    this.logger.info('Closing all queues...');
     await Promise.all(
       Array.from(this.queues.values()).map(async (queue) => {
         await queue.close();
       }),
     );
-    this.logger.log('All queues closed');
+    this.logger.info('All queues closed');
   }
 }
