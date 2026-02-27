@@ -37,7 +37,7 @@ export function createPartialMock<T>(
   Object.keys(implementations).forEach((key) => {
     const value = implementations[key as keyof T];
     if (typeof value === 'function') {
-      mock[key] = jest.fn(value);
+      mock[key] = jest.fn(value as any);
     } else {
       mock[key] = value;
     }
@@ -78,7 +78,7 @@ export function createMockRepository<T>() {
 /**
  * Create a mock Prisma client
  */
-export function createMockPrismaClient() {
+export function createMockPrismaClient(): any {
   return {
     $connect: jest.fn(),
     $disconnect: jest.fn(),
@@ -101,7 +101,7 @@ export function createMockPrismaClient() {
 /**
  * Create a mock Prisma model with common methods
  */
-export function createMockPrismaModel() {
+export function createMockPrismaModel(): any {
   return {
     create: jest.fn(),
     createMany: jest.fn(),

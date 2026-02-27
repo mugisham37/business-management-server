@@ -6,8 +6,9 @@
 import { config } from 'dotenv';
 import { resolve } from 'path';
 
-// Load test environment variables
-config({ path: resolve(__dirname, '../../../.env.test') });
+// Load test environment variables from the correct path
+const envPath = resolve(__dirname, '../../.env.test');
+config({ path: envPath });
 
 // Set test environment variables
 process.env.NODE_ENV = 'test';
