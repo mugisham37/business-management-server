@@ -1,19 +1,17 @@
 import { Controller } from '@nestjs/common';
 import { GrpcMethod, GrpcStreamMethod } from '@nestjs/microservices';
 import { Observable, interval } from 'rxjs';
-import { map, switchMap } from 'rxjs/operators';
-import type {
+import { switchMap } from 'rxjs/operators';
+import {
   HealthCheckRequest,
   HealthCheckResponse,
   ComponentHealth,
-} from '../interfaces';
-import {
   ServingStatus,
   ComponentHealthStatus,
 } from '../interfaces';
 import { BaseGrpcController } from './base-grpc.controller';
-import type { PrismaService } from '../../../core/database/prisma.service';
-import type { RedisService } from '../../../core/cache/redis.service';
+import { PrismaService } from '../../../core/database/prisma.service';
+import { RedisService } from '../../../core/cache/redis.service';
 
 /**
  * gRPC Health Check Controller
