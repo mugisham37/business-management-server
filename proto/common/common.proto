@@ -1,0 +1,57 @@
+syntax = "proto3";
+
+package common;
+
+// Pagination request message
+message PaginationRequest {
+  int32 page = 1;
+  int32 limit = 2;
+  string sort_by = 3;
+  string sort_order = 4; // "asc" or "desc"
+}
+
+// Pagination response metadata
+message PaginationMeta {
+  int32 page = 1;
+  int32 limit = 2;
+  int32 total = 3;
+  int32 total_pages = 4;
+  bool has_next = 5;
+  bool has_prev = 6;
+}
+
+// Generic error message
+message Error {
+  string code = 1;
+  string message = 2;
+  map<string, string> details = 3;
+  string timestamp = 4;
+  string correlation_id = 5;
+}
+
+// Empty message for requests/responses with no data
+message Empty {}
+
+// Generic ID message
+message IdRequest {
+  string id = 1;
+}
+
+// Generic success response
+message SuccessResponse {
+  bool success = 1;
+  string message = 2;
+}
+
+// Timestamp fields for audit
+message AuditFields {
+  string created_at = 1;
+  string updated_at = 2;
+  string created_by = 3;
+  string updated_by = 4;
+}
+
+// Tenant context
+message TenantContext {
+  string tenant_id = 1;
+}

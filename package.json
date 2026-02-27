@@ -27,17 +27,20 @@
     "prisma:migrate:deploy": "prisma migrate deploy",
     "prisma:studio": "prisma studio",
     "prisma:seed": "ts-node prisma/seeds/index.ts",
-    "proto:generate": "echo 'gRPC proto generation will be configured in later tasks'"
+    "proto:generate": "bash scripts/generate-proto.sh"
   },
   "dependencies": {
     "@bull-board/api": "^6.20.3",
     "@bull-board/express": "^6.20.3",
+    "@grpc/grpc-js": "^1.14.3",
+    "@grpc/proto-loader": "^0.8.0",
     "@nestjs/bull": "^11.0.4",
     "@nestjs/common": "^11.0.1",
     "@nestjs/config": "^4.0.3",
     "@nestjs/core": "^11.0.1",
     "@nestjs/event-emitter": "^3.0.1",
     "@nestjs/jwt": "^11.0.2",
+    "@nestjs/microservices": "^11.1.14",
     "@nestjs/passport": "^11.0.5",
     "@nestjs/platform-express": "^11.0.1",
     "@nestjs/terminus": "^11.1.1",

@@ -1,0 +1,45 @@
+syntax = "proto3";
+
+package health;
+
+// Health check service
+service HealthService {
+  // Check overall health status
+  rpc Check(HealthCheckRequest) returns (HealthCheckResponse);
+  
+  // Watch health status (streaming)
+  rpc Watch(HealthCheckRequest) returns (stream HealthCheckResponse);
+}
+
+// Health check request
+message HealthCheckRequest {
+  string service = 1; // Optional: specific service to check
+}
+
+// Health check response
+message HealthCheckResponse {
+  enum ServingStatus {
+    UNKNOWN = 0;
+    SERVING = 1;
+    NOT_SERVING = 2;
+    SERVICE_UNKNOWN = 3;
+  }
+  
+  ServingStatus status = 1;
+  map<string, ComponentHealth> components = 2;
+  string timestamp = 3;
+}
+
+// Individual component health
+message ComponentHealth {
+  enum Status {
+    UNKNOWN = 0;
+    HEALTHY = 1;
+    UNHEALTHY = 2;
+    DEGRADED = 3;
+  }
+  
+  Status status = 1;
+  string message = 2;
+  map<string, string> details = 3;
+}

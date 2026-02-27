@@ -3,10 +3,11 @@ import { AppController } from './app.controller';
 import { AppService } from './app.service';
 import { LoggingModule } from './core/logging/logging.module';
 import { HealthModule } from './health/health.module';
+import { GrpcModule } from './api/grpc/grpc.module';
 import { CorrelationIdMiddleware } from './core/logging/correlation-id.middleware';
 
 @Module({
-  imports: [LoggingModule, HealthModule],
+  imports: [LoggingModule, HealthModule, GrpcModule],
   controllers: [AppController],
   providers: [AppService],
 })
