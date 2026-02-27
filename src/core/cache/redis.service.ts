@@ -98,10 +98,11 @@ export class RedisService implements ICacheService, OnModuleDestroy {
       return JSON.parse(value) as T;
     } catch (error) {
       const duration = Date.now() - startTime;
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
       this.logger.logWithMetadata('error', `Error getting key ${key}`, {
         key,
         duration,
-        error: error.message,
+        error: errorMessage,
       });
       return null;
     }
@@ -130,10 +131,11 @@ export class RedisService implements ICacheService, OnModuleDestroy {
       });
     } catch (error) {
       const duration = Date.now() - startTime;
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
       this.logger.logWithMetadata('error', `Error setting key ${key}`, {
         key,
         duration,
-        error: error.message,
+        error: errorMessage,
       });
       throw error;
     }
@@ -146,7 +148,8 @@ export class RedisService implements ICacheService, OnModuleDestroy {
     try {
       await this.client.del(key);
     } catch (error) {
-      this.logger.error(`Error deleting key ${key}:`, error);
+      const errorMessage = error instanceof Error ? error.stack : String(error);
+      this.logger.error(`Error deleting key ${key}:`, errorMessage);
       throw error;
     }
   }
@@ -161,7 +164,8 @@ export class RedisService implements ICacheService, OnModuleDestroy {
         await this.client.del(...keys);
       }
     } catch (error) {
-      this.logger.error(`Error deleting pattern ${pattern}:`, error);
+      const errorMessage = error instanceof Error ? error.stack : String(error);
+      this.logger.error(`Error deleting pattern ${pattern}:`, errorMessage);
       throw error;
     }
   }
@@ -174,7 +178,8 @@ export class RedisService implements ICacheService, OnModuleDestroy {
       const result = await this.client.exists(key);
       return result === 1;
     } catch (error) {
-      this.logger.error(`Error checking existence of key ${key}:`, error);
+      const errorMessage = error instanceof Error ? error.stack : String(error);
+      this.logger.error(`Error checking existence of key ${key}:`, errorMessage);
       return false;
     }
   }
@@ -186,7 +191,8 @@ export class RedisService implements ICacheService, OnModuleDestroy {
     try {
       return await this.client.ttl(key);
     } catch (error) {
-      this.logger.error(`Error getting TTL for key ${key}:`, error);
+      const errorMessage = error instanceof Error ? error.stack : String(error);
+      this.logger.error(`Error getting TTL for key ${key}:`, errorMessage);
       return -2;
     }
   }
@@ -212,7 +218,8 @@ export class RedisService implements ICacheService, OnModuleDestroy {
         }
       });
     } catch (error) {
-      this.logger.error('Error getting multiple keys:', error);
+      const errorMessage = error instanceof Error ? error.stack : String(error);
+      this.logger.error('Error getting multiple keys:', errorMessage);
       return keys.map(() => null);
     }
   }
@@ -236,7 +243,8 @@ export class RedisService implements ICacheService, OnModuleDestroy {
 
       await pipeline.exec();
     } catch (error) {
-      this.logger.error('Error setting multiple keys:', error);
+      const errorMessage = error instanceof Error ? error.stack : String(error);
+      this.logger.error('Error setting multiple keys:', errorMessage);
       throw error;
     }
   }
@@ -248,7 +256,8 @@ export class RedisService implements ICacheService, OnModuleDestroy {
     try {
       return await this.client.incr(key);
     } catch (error) {
-      this.logger.error(`Error incrementing key ${key}:`, error);
+      const errorMessage = error instanceof Error ? error.stack : String(error);
+      this.logger.error(`Error incrementing key ${key}:`, errorMessage);
       throw error;
     }
   }
@@ -260,7 +269,8 @@ export class RedisService implements ICacheService, OnModuleDestroy {
     try {
       return await this.client.decr(key);
     } catch (error) {
-      this.logger.error(`Error decrementing key ${key}:`, error);
+      const errorMessage = error instanceof Error ? error.stack : String(error);
+      this.logger.error(`Error decrementing key ${key}:`, errorMessage);
       throw error;
     }
   }
@@ -273,7 +283,8 @@ export class RedisService implements ICacheService, OnModuleDestroy {
       await this.client.flushdb();
       this.logger.log('Cache reset successfully');
     } catch (error) {
-      this.logger.error('Error resetting cache:', error);
+      const errorMessage = error instanceof Error ? error.stack : String(error);
+      this.logger.error('Error resetting cache:', errorMessage);
       throw error;
     }
   }
@@ -293,7 +304,8 @@ export class RedisService implements ICacheService, OnModuleDestroy {
       await this.client.quit();
       this.logger.log('Redis client disconnected');
     } catch (error) {
-      this.logger.error('Error disconnecting Redis client:', error);
+      const errorMessage = error instanceof Error ? error.stack : String(error);
+      this.logger.error('Error disconnecting Redis client:', errorMessage);
     }
   }
 }

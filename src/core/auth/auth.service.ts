@@ -245,7 +245,7 @@ export class AuthService {
     permissions: string[],
     tenantId: string,
   ): Promise<AuthTokens> {
-    const payload = {
+    const payload: JwtPayload = {
       sub: userId,
       email,
       roles,
@@ -253,11 +253,16 @@ export class AuthService {
       tenantId,
     };
 
-    const accessToken = await this.jwtService.signAsync(payload);
+    // Access token uses default expiration from module config
+    const accessToken = await this.jwtService.signAsync(payload as any);
 
-    const refreshToken = await this.jwtService.signAsync(payload, {
-      expiresIn: this.refreshTokenExpiresIn,
-    });
+    // Refresh token with custom expiration
+    const refreshToken = await this.jwtService.signAsync(
+      payload as any,
+      {
+        expiresIn: this.refreshTokenExpiresIn as any,
+      }
+    );
 
     // Parse expiration time to seconds
     const expiresIn = this.parseExpirationTime(this.jwtExpiresIn);

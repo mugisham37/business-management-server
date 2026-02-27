@@ -5,8 +5,8 @@ import { IsString, IsEnum } from 'class-validator';
  */
 export class SortDto {
   @IsString()
-  field: string;
+  field!: string;
 
   @IsEnum(['asc', 'desc'])
-  order: 'asc' | 'desc';
+  order!: 'asc' | 'desc';
 }

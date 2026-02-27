@@ -8,6 +8,7 @@ import { CacheAsideStrategy } from './strategies/cache-aside.strategy';
 import { WriteThroughStrategy } from './strategies/write-through.strategy';
 import { WriteBehindStrategy } from './strategies/write-behind.strategy';
 import { CacheOptions } from './interfaces/cache-options.interface';
+import { LoggerService } from '../logging/logger.service';
 
 /**
  * Cache module providing Redis-based caching services
@@ -26,12 +27,13 @@ export class CacheModule {
           provide: 'CACHE_OPTIONS',
           useValue: options,
         },
+        LoggerService,
         {
           provide: RedisService,
-          useFactory: (cacheOptions: CacheOptions) => {
-            return new RedisService(cacheOptions);
+          useFactory: (cacheOptions: CacheOptions, loggerService: LoggerService) => {
+            return new RedisService(cacheOptions, loggerService);
           },
-          inject: ['CACHE_OPTIONS'],
+          inject: ['CACHE_OPTIONS', LoggerService],
         },
         CacheKeyBuilder,
         CacheInterceptor,
@@ -69,12 +71,13 @@ export class CacheModule {
           useFactory: options.useFactory,
           inject: options.inject || [],
         },
+        LoggerService,
         {
           provide: RedisService,
-          useFactory: (cacheOptions: CacheOptions) => {
-            return new RedisService(cacheOptions);
+          useFactory: (cacheOptions: CacheOptions, loggerService: LoggerService) => {
+            return new RedisService(cacheOptions, loggerService);
           },
-          inject: ['CACHE_OPTIONS'],
+          inject: ['CACHE_OPTIONS', LoggerService],
         },
         CacheKeyBuilder,
         CacheInterceptor,

@@ -2,9 +2,11 @@ import { Controller } from '@nestjs/common';
 import { GrpcMethod, GrpcStreamMethod } from '@nestjs/microservices';
 import { Observable, interval } from 'rxjs';
 import { switchMap } from 'rxjs/operators';
-import {
+import type {
   HealthCheckRequest,
   HealthCheckResponse,
+} from '../interfaces';
+import {
   ComponentHealth,
   ServingStatus,
   ComponentHealthStatus,

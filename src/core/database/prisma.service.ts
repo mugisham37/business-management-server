@@ -76,7 +76,8 @@ export class PrismaService extends PrismaClient implements OnModuleInit, OnModul
       await this.$connect();
       this.logger.info('Database connection established');
     } catch (error) {
-      this.logger.error('Failed to connect to database', error.stack);
+      const errorStack = error instanceof Error ? error.stack : String(error);
+      this.logger.error('Failed to connect to database', errorStack);
       throw error;
     }
   }
@@ -89,7 +90,8 @@ export class PrismaService extends PrismaClient implements OnModuleInit, OnModul
       await this.$disconnect();
       this.logger.info('Database connection closed');
     } catch (error) {
-      this.logger.error('Error closing database connection', error.stack);
+      const errorStack = error instanceof Error ? error.stack : String(error);
+      this.logger.error('Error closing database connection', errorStack);
     }
   }
 
@@ -126,7 +128,8 @@ export class PrismaService extends PrismaClient implements OnModuleInit, OnModul
       await this.$queryRaw`SELECT 1`;
       return true;
     } catch (error) {
-      this.logger.error('Database ping failed', error.stack);
+      const errorStack = error instanceof Error ? error.stack : String(error);
+      this.logger.error('Database ping failed', errorStack);
       return false;
     }
   }

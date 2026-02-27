@@ -3,6 +3,7 @@ import { BullModule } from '@nestjs/bull';
 import { BullService } from './bull.service';
 import { BullBoardService } from './bull-board.service';
 import { QueueName } from './interfaces';
+import { LoggerService } from '../logging/logger.service';
 
 export interface QueueModuleOptions {
   redis: {
@@ -18,16 +19,18 @@ export interface QueueModuleOptions {
 export class QueueModule {
   static forRoot(options: QueueModuleOptions): DynamicModule {
     const providers: any[] = [
+      LoggerService,
       {
         provide: BullService,
-        useFactory: () => {
-          const service = new BullService(options);
+        useFactory: (loggerService: LoggerService) => {
+          const service = new BullService(options, loggerService);
           // Initialize all queues
           Object.values(QueueName).forEach((queueName) => {
             service.initializeQueue(queueName as QueueName);
           });
           return service;
         },
+        inject: [LoggerService],
       },
     ];
 

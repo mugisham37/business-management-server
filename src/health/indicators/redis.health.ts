@@ -19,11 +19,12 @@ export class RedisHealthIndicator extends HealthIndicator {
       return this.getStatus(key, true, { responseTime });
     } catch (error) {
       const responseTime = Date.now() - startTime;
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
       throw new HealthCheckError(
         'Redis check failed',
         this.getStatus(key, false, { 
           responseTime,
-          error: error.message 
+          error: errorMessage 
         }),
       );
     }
