@@ -27,6 +27,10 @@
     "prisma:migrate:deploy": "prisma migrate deploy",
     "prisma:studio": "prisma studio",
     "prisma:seed": "ts-node prisma/seeds/index.ts",
+    "prisma:seed:dev": "ts-node prisma/seeds/development.seed.ts",
+    "prisma:seed:test": "ts-node prisma/seeds/test.seed.ts",
+    "prisma:seed:rollback": "ts-node prisma/seeds/index.ts --rollback",
+    "prisma:seed:verify": "ts-node prisma/seeds/verify.ts",
     "proto:generate": "bash scripts/generate-proto.sh"
   },
   "dependencies": {
