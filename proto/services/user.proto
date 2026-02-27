@@ -1,0 +1,76 @@
+syntax = "proto3";
+
+package user;
+
+import "common/common.proto";
+
+// User service definition
+service UserService {
+  rpc GetUser(GetUserRequest) returns (UserResponse);
+  rpc GetUserByEmail(GetUserByEmailRequest) returns (UserResponse);
+  rpc ListUsers(ListUsersRequest) returns (ListUsersResponse);
+  rpc CreateUser(CreateUserRequest) returns (UserResponse);
+  rpc UpdateUser(UpdateUserRequest) returns (UserResponse);
+  rpc DeleteUser(DeleteUserRequest) returns (common.SuccessResponse);
+}
+
+// User message
+message User {
+  string id = 1;
+  string email = 2;
+  string first_name = 3;
+  string last_name = 4;
+  bool is_active = 5;
+  string tenant_id = 6;
+  string created_at = 7;
+  string updated_at = 8;
+}
+
+// Get user by ID request
+message GetUserRequest {
+  string id = 1;
+}
+
+// Get user by email request
+message GetUserByEmailRequest {
+  string email = 1;
+}
+
+// List users request
+message ListUsersRequest {
+  common.PaginationRequest pagination = 1;
+}
+
+// List users response
+message ListUsersResponse {
+  repeated User users = 1;
+  common.PaginationMeta meta = 2;
+}
+
+// Create user request
+message CreateUserRequest {
+  string email = 1;
+  string password = 2;
+  string first_name = 3;
+  string last_name = 4;
+  string tenant_id = 5;
+}
+
+// Update user request
+message UpdateUserRequest {
+  string id = 1;
+  optional string email = 2;
+  optional string first_name = 3;
+  optional string last_name = 4;
+  optional bool is_active = 5;
+}
+
+// Delete user request
+message DeleteUserRequest {
+  string id = 1;
+}
+
+// User response
+message UserResponse {
+  User user = 1;
+}
