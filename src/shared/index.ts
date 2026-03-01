@@ -12,3 +12,9 @@ export * from './interceptors';
 
 // Pipes
 export * from './pipes';
+
+// Types
+export * from './types';
+
+// Utils
+export * from './utils';
