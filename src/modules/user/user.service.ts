@@ -322,4 +322,227 @@ export class UserService {
   private generateTemporaryPIN(): string {
     return Math.floor(100000 + Math.random() * 900000).toString();
   }
+
+
+    /**
+     * Change password with current password verification
+     * Requirements: 14.1, 14.4, 14.5, 14.7
+     */
+    async changePassword(
+        userId: string,
+        currentPassword: string,
+        newPassword: string,
+        currentSessionId?: string,
+      ): Promise<void> {
+        // Get user
+        const user = await this.findById(userId);
+        if (!user) {
+          throw new NotFoundException('User not found');
+        }
+
+        // Verify current password (Requirement 14.4)
+        if (!user.passwordHash) {
+          throw new BadRequestException('User does not have a password set');
+        }
+
+        const isCurrentPasswordValid = await bcrypt.compare(
+          currentPassword,
+          user.passwordHash,
+        );
+        if (!isCurrentPasswordValid) {
+          throw new BadRequestException('Current password is incorrect');
+        }
+
+        // Validate new password strength (Requirement 14.1)
+        this.validatePasswordStrength(newPassword);
+
+        // Check password reuse (last 3 passwords) (Requirement 14.7)
+        await this.checkPasswordReuse(userId, newPassword);
+
+        // Hash new password
+        const newPasswordHash = await bcrypt.hash(newPassword, 10);
+
+        // Update password and store old password hash in staff profile metadata
+        await this.prisma.$transaction(async (tx) => {
+          // Get staff profile to access metadata
+          const staffProfile = await tx.staff_profiles.findUnique({
+            where: { userId },
+            select: { metadata: true },
+          });
+
+          // Get current password history from staff profile metadata
+          const passwordHistory = (staffProfile?.metadata as any)?.passwordHistory || [];
+
+          // Add current password to history
+          passwordHistory.unshift(user.passwordHash);
+
+          // Keep only last 3 passwords
+          const updatedHistory = passwordHistory.slice(0, 3);
+
+          // Update staff profile with password history
+          await tx.staff_profiles.update({
+            where: { userId },
+            data: {
+              metadata: {
+                ...(staffProfile?.metadata as any || {}),
+                passwordHistory: updatedHistory,
+              },
+              updatedAt: new Date(),
+            },
+          });
+
+          // Update user with new password
+          await tx.users.update({
+            where: { id: userId },
+            data: {
+              passwordHash: newPasswordHash,
+              updatedAt: new Date(),
+            },
+          });
+
+          // Revoke all sessions except current (Requirement 14.5)
+          await tx.sessions.updateMany({
+            where: {
+              userId,
+              revokedAt: null,
+              ...(currentSessionId && {
+                id: {
+                  not: currentSessionId,
+                },
+              }),
+            },
+            data: {
+              revokedAt: new Date(),
+            },
+          });
+        });
+      }
+
+    /**
+     * Set PIN with format validation
+     * Requirements: 14.2, 14.3
+     */
+    async setPIN(userId: string, pin: string): Promise<void> {
+      // Get user
+      const user = await this.findById(userId);
+      if (!user) {
+        throw new NotFoundException('User not found');
+      }
+
+      // Validate user is a worker (Requirement 14.2)
+      if (user.hierarchyLevel !== HierarchyLevel.WORKER) {
+        throw new BadRequestException('Only workers can set a PIN');
+      }
+
+      // Validate PIN format (4-6 digits) (Requirement 14.2)
+      this.validatePINFormat(pin);
+
+      // Hash PIN (Requirement 14.3)
+      const pinHash = await bcrypt.hash(pin, 10);
+
+      // Update user with PIN
+      await this.prisma.users.update({
+        where: { id: userId },
+        data: {
+          pinHash,
+          updatedAt: new Date(),
+        },
+      });
+    }
+
+    /**
+     * Validate password strength
+     * Requirement 14.1: Minimum 8 characters, uppercase, lowercase, number, special character
+     */
+    private validatePasswordStrength(password: string): void {
+      if (password.length < 8) {
+        throw new BadRequestException(
+          'Password must be at least 8 characters long',
+        );
+      }
+
+      if (!/[A-Z]/.test(password)) {
+        throw new BadRequestException(
+          'Password must contain at least one uppercase letter',
+        );
+      }
+
+      if (!/[a-z]/.test(password)) {
+        throw new BadRequestException(
+          'Password must contain at least one lowercase letter',
+        );
+      }
+
+      if (!/[0-9]/.test(password)) {
+        throw new BadRequestException(
+          'Password must contain at least one number',
+        );
+      }
+
+      if (!/[!@#$%^&*()_+\-=\[\]{};':"\\|,.<>\/?]/.test(password)) {
+        throw new BadRequestException(
+          'Password must contain at least one special character',
+        );
+      }
+    }
+
+    /**
+     * Validate PIN format
+     * Requirement 14.2: 4-6 digits only
+     */
+    private validatePINFormat(pin: string): void {
+      if (!/^\d{4,6}$/.test(pin)) {
+        throw new BadRequestException('PIN must be 4-6 digits');
+      }
+    }
+
+    /**
+     * Check password reuse (last 3 passwords)
+     * Requirement 14.7: Prevent password reuse
+     */
+    private async checkPasswordReuse(
+        userId: string,
+        newPassword: string,
+      ): Promise<void> {
+        const user = await this.prisma.users.findUnique({
+          where: { id: userId },
+          select: {
+            passwordHash: true,
+            staff_profiles: {
+              select: {
+                metadata: true,
+              },
+            },
+          },
+        });
+
+        if (!user) {
+          return;
+        }
+
+        // Check against current password
+        if (user.passwordHash) {
+          const matchesCurrent = await bcrypt.compare(
+            newPassword,
+            user.passwordHash,
+          );
+          if (matchesCurrent) {
+            throw new BadRequestException(
+              'New password cannot be the same as current password',
+            );
+          }
+        }
+
+        // Check against password history from staff profile metadata
+        const passwordHistory = (user.staff_profiles?.metadata as any)?.passwordHistory || [];
+        for (const oldPasswordHash of passwordHistory) {
+          const matchesOld = await bcrypt.compare(newPassword, oldPasswordHash);
+          if (matchesOld) {
+            throw new BadRequestException(
+              'New password cannot be one of your last 3 passwords',
+            );
+          }
+        }
+      }
+
 }

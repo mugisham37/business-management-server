@@ -122,4 +122,108 @@ describe('UserService', () => {
       });
     });
   });
+
+  describe('changePassword', () => {
+    it('should throw NotFoundException when user not found', async () => {
+      jest.spyOn(service, 'findById').mockResolvedValue(null);
+
+      await expect(
+        service.changePassword('user-123', 'oldPass', 'NewPass123!')
+      ).rejects.toThrow(NotFoundException);
+    });
+
+    it('should throw BadRequestException when user has no password', async () => {
+      const mockUser = {
+        id: 'user-123',
+        passwordHash: null,
+      };
+      jest.spyOn(service, 'findById').mockResolvedValue(mockUser as any);
+
+      await expect(
+        service.changePassword('user-123', 'oldPass', 'NewPass123!')
+      ).rejects.toThrow(BadRequestException);
+    });
+
+    it('should throw BadRequestException when current password is incorrect', async () => {
+      const mockUser = {
+        id: 'user-123',
+        passwordHash: 'hashed_password',
+      };
+      jest.spyOn(service, 'findById').mockResolvedValue(mockUser as any);
+
+      await expect(
+        service.changePassword('user-123', 'wrongPass', 'NewPass123!')
+      ).rejects.toThrow(BadRequestException);
+    });
+
+    it('should throw BadRequestException for weak password', async () => {
+      const bcrypt = require('bcrypt');
+      const mockUser = {
+        id: 'user-123',
+        passwordHash: await bcrypt.hash('OldPass123!', 10),
+      };
+      jest.spyOn(service, 'findById').mockResolvedValue(mockUser as any);
+
+      await expect(
+        service.changePassword('user-123', 'OldPass123!', 'weak')
+      ).rejects.toThrow(BadRequestException);
+    });
+  });
+
+  describe('setPIN', () => {
+    it('should throw NotFoundException when user not found', async () => {
+      jest.spyOn(service, 'findById').mockResolvedValue(null);
+
+      await expect(
+        service.setPIN('user-123', '1234')
+      ).rejects.toThrow(NotFoundException);
+    });
+
+    it('should throw BadRequestException when user is not a worker', async () => {
+      const mockUser = {
+        id: 'user-123',
+        hierarchyLevel: HierarchyLevel.MANAGER,
+      };
+      jest.spyOn(service, 'findById').mockResolvedValue(mockUser as any);
+
+      await expect(
+        service.setPIN('user-123', '1234')
+      ).rejects.toThrow(BadRequestException);
+    });
+
+    it('should throw BadRequestException for invalid PIN format', async () => {
+      const mockUser = {
+        id: 'user-123',
+        hierarchyLevel: HierarchyLevel.WORKER,
+      };
+      jest.spyOn(service, 'findById').mockResolvedValue(mockUser as any);
+
+      await expect(
+        service.setPIN('user-123', '12')
+      ).rejects.toThrow(BadRequestException);
+
+      await expect(
+        service.setPIN('user-123', '1234567')
+      ).rejects.toThrow(BadRequestException);
+
+      await expect(
+        service.setPIN('user-123', 'abcd')
+      ).rejects.toThrow(BadRequestException);
+    });
+
+    it('should successfully set PIN for worker', async () => {
+      const mockUser = {
+        id: 'user-123',
+        hierarchyLevel: HierarchyLevel.WORKER,
+      };
+      jest.spyOn(service, 'findById').mockResolvedValue(mockUser as any);
+      jest.spyOn(prisma.users, 'update').mockResolvedValue(mockUser as any);
+
+      await expect(
+        service.setPIN('user-123', '1234')
+      ).resolves.not.toThrow();
+
+      expect(prisma.users.update).toHaveBeenCalled();
+    });
+  });
 });
