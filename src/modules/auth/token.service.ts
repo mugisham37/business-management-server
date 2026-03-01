@@ -304,7 +304,7 @@ export class TokenService {
   /**
    * Check if token is blacklisted
    */
-  private async isTokenBlacklisted(jti: string): Promise<boolean> {
+  async isTokenBlacklisted(jti: string): Promise<boolean> {
     try {
       const blacklistKey = `token:blacklist:${jti}`;
       const exists = await this.redisService.exists(blacklistKey);
