@@ -5,5 +5,6 @@ export * from './cache.decorator';
 export * from './cache.interceptor';
 export * from './multi-tier-cache.service';
 export * from './cache-invalidation.service';
+export * from './token-blacklist.service';
 export * from './strategies';
 export * from './interfaces';

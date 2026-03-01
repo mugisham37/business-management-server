@@ -4,6 +4,7 @@ import { CacheKeyBuilder } from './cache-key.builder';
 import { CacheInterceptor } from './cache.interceptor';
 import { MultiTierCacheService } from './multi-tier-cache.service';
 import { CacheInvalidationService } from './cache-invalidation.service';
+import { TokenBlacklistService } from './token-blacklist.service';
 import { CacheAsideStrategy } from './strategies/cache-aside.strategy';
 import { WriteThroughStrategy } from './strategies/write-through.strategy';
 import { WriteBehindStrategy } from './strategies/write-behind.strategy';
@@ -39,6 +40,7 @@ export class CacheModule {
         CacheInterceptor,
         MultiTierCacheService,
         CacheInvalidationService,
+        TokenBlacklistService,
         CacheAsideStrategy,
         WriteThroughStrategy,
         WriteBehindStrategy,
@@ -49,6 +51,7 @@ export class CacheModule {
         CacheInterceptor,
         MultiTierCacheService,
         CacheInvalidationService,
+        TokenBlacklistService,
         CacheAsideStrategy,
         WriteThroughStrategy,
         WriteBehindStrategy,
@@ -83,6 +86,7 @@ export class CacheModule {
         CacheInterceptor,
         MultiTierCacheService,
         CacheInvalidationService,
+        TokenBlacklistService,
         CacheAsideStrategy,
         WriteThroughStrategy,
         WriteBehindStrategy,
@@ -93,6 +97,7 @@ export class CacheModule {
         CacheInterceptor,
         MultiTierCacheService,
         CacheInvalidationService,
+        TokenBlacklistService,
         CacheAsideStrategy,
         WriteThroughStrategy,
         WriteBehindStrategy,
