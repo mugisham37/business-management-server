@@ -1,6 +1,3 @@
-// Prisma Schema for NestJS ERP Infrastructure
-// This schema defines the base models for multi-tenant ERP system
-
 generator client {
   provider = "prisma-client-js"
 }
@@ -10,184 +7,346 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
-// Tenant model for multi-tenancy
-model Tenant {
-  id        String   @id @default(uuid())
-  name      String
-  slug      String   @unique
-  isActive  Boolean  @default(true)
-  
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-  deletedAt DateTime?
-  
-  createdBy String?
-  updatedBy String?
-  
-  // Relations
-  users     User[]
-  auditLogs AuditLog[]
-  
-  @@map("tenants")
-  @@index([slug])
-  @@index([isActive])
-}
+model audit_logs {
+  id             String          @id
+  userId         String?
+  organizationId String?
+  hierarchyLevel HierarchyLevel?
+  action         String
+  resourceType   String
+  resourceId     String?
+  result         String
+  metadata       Json?
+  tenantId       String?
+  entity         String?
+  entityId       String?
+  oldValue       Json?
+  newValue       Json?
+  ipAddress      String?
+  userAgent      String?
+  createdAt      DateTime        @default(now())
+  organizations  organizations?  @relation(fields: [organizationId], references: [id])
+  users          users?          @relation(fields: [userId], references: [id])
 
-// User model for authentication
-model User {
-  id        String   @id @default(uuid())
-  email     String   @unique
-  password  String
-  firstName String
-  lastName  String
-  isActive  Boolean  @default(true)
-  
-  tenantId  String
-  tenant    Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
-  
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-  deletedAt DateTime?
-  
-  createdBy String?
-  updatedBy String?
-  
-  // Relations
-  roles     UserRole[]
-  auditLogs AuditLog[]
-  
-  @@map("users")
+  @@index([action])
+  @@index([createdAt])
+  @@index([entity, entityId])
+  @@index([organizationId])
+  @@index([resourceType])
   @@index([tenantId])
-  @@index([email])
-  @@index([isActive])
+  @@index([userId])
 }
 
-// Role model for RBAC
-model Role {
-  id          String   @id @default(uuid())
-  name        String   @unique
-  description String?
-  
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-  deletedAt DateTime?
-  
-  createdBy String?
-  updatedBy String?
-  
-  // Relations
-  permissions RolePermission[]
-  users       UserRole[]
-  
-  @@map("roles")
+model authorization_rules {
+  id              String         @id
+  organizationId  String
+  ruleName        String
+  transactionType String
+  basedOn         String
+  thresholdValue  Float
+  appliesToLevel  HierarchyLevel
+  approverLevel   HierarchyLevel
+  isActive        Boolean        @default(true)
+  priority        Int            @default(0)
+  createdAt       DateTime       @default(now())
+  updatedAt       DateTime
+  organizations   organizations  @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  @@index([isActive])
+  @@index([organizationId])
+  @@index([transactionType])
+}
+
+model branches {
+  id             String        @id
+  organizationId String
+  name           String
+  code           String
+  address        String?
+  managerId      String?
+  createdAt      DateTime      @default(now())
+  updatedAt      DateTime
+  organizations  organizations @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  departments    departments[]
+  users          users[]
+
+  @@unique([organizationId, code])
+  @@index([organizationId])
+}
+
+model departments {
+  id             String        @id
+  organizationId String
+  branchId       String?
+  name           String
+  code           String
+  managerId      String?
+  createdAt      DateTime      @default(now())
+  updatedAt      DateTime
+  branches       branches?     @relation(fields: [branchId], references: [id])
+  organizations  organizations @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  users          users[]
+
+  @@unique([organizationId, code])
+  @@index([branchId])
+  @@index([organizationId])
+}
+
+model organizations {
+  id                                        String                @id
+  name                                      String                @unique
+  type                                      OrganizationType
+  status                                    OrganizationStatus    @default(ACTIVE)
+  settings                                  Json?
+  ownerId                                   String                @unique
+  createdAt                                 DateTime              @default(now())
+  updatedAt                                 DateTime
+  audit_logs                                audit_logs[]
+  authorization_rules                       authorization_rules[]
+  branches                                  branches[]
+  departments                               departments[]
+  users_organizations_ownerIdTousers        users                 @relation("organizations_ownerIdTousers", fields: [ownerId], references: [id])
+  permission_matrices                       permission_matrices[]
+  users_users_organizationIdToorganizations users[]               @relation("users_organizationIdToorganizations")
+
+  @@index([status])
+}
+
+model permission_matrices {
+  id                                           String        @id
+  userId                                       String
+  organizationId                               String
+  module                                       String
+  actions                                      String[]
+  grantedById                                  String
+  grantedAt                                    DateTime      @default(now())
+  revokedAt                                    DateTime?
+  users_permission_matrices_grantedByIdTousers users         @relation("permission_matrices_grantedByIdTousers", fields: [grantedById], references: [id])
+  organizations                                organizations @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  users_permission_matrices_userIdTousers      users         @relation("permission_matrices_userIdTousers", fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, module])
+  @@index([grantedById])
+  @@index([organizationId])
+  @@index([revokedAt])
+  @@index([userId])
+}
+
+model permission_snapshots {
+  id              String   @id
+  userId          String
+  snapshotData    Json
+  fingerprintHash String
+  reason          String
+  createdAt       DateTime @default(now())
+  users           users    @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([createdAt])
+  @@index([userId])
+}
+
+model permissions {
+  id               String             @id
+  name             String             @unique
+  resource         String
+  action           String
+  description      String?
+  createdAt        DateTime           @default(now())
+  updatedAt        DateTime
+  deletedAt        DateTime?
+  createdBy        String?
+  updatedBy        String?
+  role_permissions role_permissions[]
+
+  @@unique([resource, action])
+  @@index([action])
+  @@index([resource])
+}
+
+model role_permissions {
+  roleId       String
+  permissionId String
+  grantedAt    DateTime    @default(now())
+  grantedBy    String?
+  permissions  permissions @relation(fields: [permissionId], references: [id], onDelete: Cascade)
+  roles        roles       @relation(fields: [roleId], references: [id], onDelete: Cascade)
+
+  @@id([roleId, permissionId])
+  @@index([permissionId])
+  @@index([roleId])
+}
+
+model roles {
+  id               String             @id
+  name             String             @unique
+  description      String?
+  createdAt        DateTime           @default(now())
+  updatedAt        DateTime
+  deletedAt        DateTime?
+  createdBy        String?
+  updatedBy        String?
+  role_permissions role_permissions[]
+  user_roles       user_roles[]
+
   @@index([name])
 }
 
-// Permission model
-model Permission {
-  id          String   @id @default(uuid())
-  name        String   @unique
-  resource    String
-  action      String
-  description String?
-  
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-  deletedAt DateTime?
-  
-  createdBy String?
-  updatedBy String?
-  
-  // Relations
-  roles RolePermission[]
-  
-  @@map("permissions")
-  @@unique([resource, action])
-  @@index([resource])
-  @@index([action])
+model sessions {
+  id                     String    @id
+  userId                 String
+  refreshTokenHash       String    @unique
+  accessTokenFingerprint String
+  ipAddress              String?
+  userAgent              String?
+  expiresAt              DateTime
+  revokedAt              DateTime?
+  createdAt              DateTime  @default(now())
+  users                  users     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([expiresAt])
+  @@index([revokedAt])
+  @@index([userId])
 }
 
-// Junction table: User-Role (many-to-many)
-model UserRole {
-  userId String
-  roleId String
-  
-  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
-  role Role @relation(fields: [roleId], references: [id], onDelete: Cascade)
-  
+model staff_profiles {
+  id               String           @id
+  userId           String           @unique
+  fullName         String
+  positionTitle    String?
+  employeeCode     String?
+  reportsToUserId  String?
+  employmentStatus EmploymentStatus @default(ACTIVE)
+  hireDate         DateTime?
+  terminationDate  DateTime?
+  metadata         Json?
+  createdAt        DateTime         @default(now())
+  updatedAt        DateTime
+  users            users            @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([reportsToUserId])
+  @@index([userId])
+}
+
+model system_config {
+  id          String    @id
+  key         String    @unique
+  value       Json
+  description String?
+  isPublic    Boolean   @default(false)
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime
+  deletedAt   DateTime?
+  createdBy   String?
+  updatedBy   String?
+
+  @@index([isPublic])
+  @@index([key])
+}
+
+model tenants {
+  id        String    @id
+  name      String
+  slug      String    @unique
+  isActive  Boolean   @default(true)
+  createdAt DateTime  @default(now())
+  updatedAt DateTime
+  deletedAt DateTime?
+  createdBy String?
+  updatedBy String?
+
+  @@index([isActive])
+  @@index([slug])
+}
+
+model user_roles {
+  userId     String
+  roleId     String
   assignedAt DateTime @default(now())
   assignedBy String?
-  
+  roles      roles    @relation(fields: [roleId], references: [id], onDelete: Cascade)
+  users      users    @relation(fields: [userId], references: [id], onDelete: Cascade)
+
   @@id([userId, roleId])
-  @@map("user_roles")
-  @@index([userId])
   @@index([roleId])
+  @@index([userId])
 }
 
-// Junction table: Role-Permission (many-to-many)
-model RolePermission {
-  roleId       String
-  permissionId String
-  
-  role       Role       @relation(fields: [roleId], references: [id], onDelete: Cascade)
-  permission Permission @relation(fields: [permissionId], references: [id], onDelete: Cascade)
-  
-  grantedAt DateTime @default(now())
-  grantedBy String?
-  
-  @@id([roleId, permissionId])
-  @@map("role_permissions")
-  @@index([roleId])
-  @@index([permissionId])
-}
+model users {
+  id                                                         String                 @id
+  email                                                      String
+  passwordHash                                               String?
+  pinHash                                                    String?
+  googleId                                                   String?                @unique
+  organizationId                                             String
+  hierarchyLevel                                             HierarchyLevel
+  status                                                     UserStatus             @default(ACTIVE)
+  createdById                                                String?
+  branchId                                                   String?
+  departmentId                                               String?
+  lastLoginAt                                                DateTime?
+  failedLoginAttempts                                        Int                    @default(0)
+  lockedUntil                                                DateTime?
+  firstName                                                  String?
+  lastName                                                   String?
+  isActive                                                   Boolean                @default(true)
+  tenantId                                                   String?
+  createdAt                                                  DateTime               @default(now())
+  updatedAt                                                  DateTime
+  deletedAt                                                  DateTime?
+  createdBy_legacy                                           String?
+  updatedBy                                                  String?
+  audit_logs                                                 audit_logs[]
+  organizations_organizations_ownerIdTousers                 organizations?         @relation("organizations_ownerIdTousers")
+  permission_matrices_permission_matrices_grantedByIdTousers permission_matrices[]  @relation("permission_matrices_grantedByIdTousers")
+  permission_matrices_permission_matrices_userIdTousers      permission_matrices[]  @relation("permission_matrices_userIdTousers")
+  permission_snapshots                                       permission_snapshots[]
+  sessions                                                   sessions[]
+  staff_profiles                                             staff_profiles?
+  user_roles                                                 user_roles[]
+  branches                                                   branches?              @relation(fields: [branchId], references: [id])
+  users                                                      users?                 @relation("usersTousers", fields: [createdById], references: [id])
+  other_users                                                users[]                @relation("usersTousers")
+  departments                                                departments?           @relation(fields: [departmentId], references: [id])
+  organizations_users_organizationIdToorganizations          organizations          @relation("users_organizationIdToorganizations", fields: [organizationId], references: [id])
 
-// Audit log model for tracking changes
-model AuditLog {
-  id        String   @id @default(uuid())
-  
-  userId    String?
-  user      User?    @relation(fields: [userId], references: [id], onDelete: SetNull)
-  
-  tenantId  String?
-  tenant    Tenant?  @relation(fields: [tenantId], references: [id], onDelete: SetNull)
-  
-  entity    String
-  entityId  String
-  action    String   // CREATE, UPDATE, DELETE
-  
-  oldValue  Json?
-  newValue  Json?
-  
-  ipAddress String?
-  userAgent String?
-  
-  createdAt DateTime @default(now())
-  
-  @@map("audit_logs")
-  @@index([entity, entityId])
-  @@index([userId])
+  @@unique([email, organizationId])
+  @@index([branchId])
+  @@index([createdById])
+  @@index([departmentId])
+  @@index([email])
+  @@index([hierarchyLevel])
+  @@index([isActive])
+  @@index([organizationId])
+  @@index([status])
   @@index([tenantId])
-  @@index([createdAt])
-  @@index([action])
 }
 
-// System configuration model
-model SystemConfig {
-  id    String @id @default(uuid())
-  key   String @unique
-  value Json
-  
-  description String?
-  isPublic    Boolean @default(false)
-  
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-  deletedAt DateTime?
-  
-  createdBy String?
-  updatedBy String?
-  
-  @@map("system_config")
-  @@index([key])
-  @@index([isPublic])
+enum EmploymentStatus {
+  ACTIVE
+  ON_LEAVE
+  TERMINATED
+}
+
+enum HierarchyLevel {
+  OWNER
+  MANAGER
+  WORKER
+}
+
+enum OrganizationStatus {
+  ACTIVE
+  SUSPENDED
+  INACTIVE
+}
+
+enum OrganizationType {
+  ENTERPRISE
+  SME
+  STARTUP
+}
+
+enum UserStatus {
+  ACTIVE
+  INACTIVE
+  LOCKED
 }
