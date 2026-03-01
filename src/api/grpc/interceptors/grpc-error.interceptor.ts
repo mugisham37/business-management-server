@@ -4,6 +4,11 @@ import {
   ExecutionContext,
   CallHandler,
   Logger,
+  UnauthorizedException,
+  ForbiddenException,
+  NotFoundException,
+  BadRequestException,
+  ConflictException,
 } from '@nestjs/common';
 import { Observable, throwError } from 'rxjs';
 import { catchError } from 'rxjs/operators';
@@ -12,7 +17,14 @@ import { GrpcError } from '../interfaces';
 
 /**
  * gRPC Error Formatting Interceptor
- * Catches and formats errors for gRPC protocol
+ * 
+ * Catches and formats errors for gRPC protocol with:
+ * - Error code mapping to gRPC status codes
+ * - Message sanitization
+ * - Contextual logging
+ * - Correlation ID tracking
+ * 
+ * Requirements: 16.6, 16.7, 17.8, 19.2, 19.4
  */
 @Injectable()
 export class GrpcErrorInterceptor implements NestInterceptor {
@@ -26,18 +38,22 @@ export class GrpcErrorInterceptor implements NestInterceptor {
       return next.handle();
     }
 
+    // Get method name for logging
+    const methodName = context.getHandler().name;
+
     return next.handle().pipe(
       catchError((error) => {
-        this.logger.error(`gRPC Error: ${error.message}`, error.stack);
+        // Get correlation ID from metadata if available
+        const metadata = context.getArgByIndex(1);
+        const correlationId = metadata?.get('x-correlation-id')?.[0];
+
+        // Log error with context (Requirement 19.2, 19.4)
+        this.logError(error, methodName, correlationId);
 
         // If already an RpcException, pass it through
         if (error instanceof RpcException) {
           return throwError(() => error);
         }
-
-        // Get correlation ID from metadata if available
-        const metadata = context.getArgByIndex(1);
-        const correlationId = metadata?.get('x-correlation-id')?.[0];
 
         // Map common errors to gRPC status codes
         const grpcError: GrpcError = this.mapErrorToGrpcError(
@@ -50,64 +66,150 @@ export class GrpcErrorInterceptor implements NestInterceptor {
     );
   }
 
+  /**
+   * Log error with full context
+   * Requirement 19.2, 19.4
+   */
+  private logError(
+    error: any,
+    methodName: string,
+    correlationId?: string,
+  ): void {
+    const errorContext = {
+      method: methodName,
+      correlationId,
+      errorType: error.constructor.name,
+      statusCode: error.status || error.statusCode,
+    };
+
+    // Log with appropriate level based on error type
+    if (this.isCriticalError(error)) {
+      this.logger.error(
+        `Critical gRPC Error in ${methodName}: ${error.message}`,
+        error.stack,
+        JSON.stringify(errorContext),
+      );
+    } else if (this.isClientError(error)) {
+      this.logger.warn(
+        `Client Error in ${methodName}: ${error.message}`,
+        JSON.stringify(errorContext),
+      );
+    } else {
+      this.logger.error(
+        `gRPC Error in ${methodName}: ${error.message}`,
+        error.stack,
+        JSON.stringify(errorContext),
+      );
+    }
+  }
+
+  /**
+   * Map error to gRPC error format with sanitization
+   * Requirement 16.6, 17.8
+   */
   private mapErrorToGrpcError(error: any, correlationId?: string): GrpcError {
     const timestamp = new Date().toISOString();
 
-    // Map common error types
-    if (error.name === 'UnauthorizedException') {
+    // Map specific exception types
+    if (error instanceof UnauthorizedException) {
       return {
         code: 'UNAUTHENTICATED',
-        message: error.message || 'Authentication required',
+        message: this.sanitizeMessage(error.message || 'Authentication required'),
         timestamp,
         correlationId,
       };
     }
 
-    if (error.name === 'ForbiddenException') {
+    if (error instanceof ForbiddenException) {
       return {
         code: 'PERMISSION_DENIED',
-        message: error.message || 'Permission denied',
+        message: this.sanitizeMessage(error.message || 'Permission denied'),
         timestamp,
         correlationId,
+        details: error.layer ? { layer: error.layer, reason: error.reason } : undefined,
       };
     }
 
-    if (error.name === 'NotFoundException') {
+    if (error instanceof NotFoundException) {
       return {
         code: 'NOT_FOUND',
-        message: error.message || 'Resource not found',
+        message: this.sanitizeMessage(error.message || 'Resource not found'),
         timestamp,
         correlationId,
       };
     }
 
-    if (error.name === 'BadRequestException') {
+    if (error instanceof BadRequestException) {
       return {
         code: 'INVALID_ARGUMENT',
-        message: error.message || 'Invalid request',
+        message: this.sanitizeMessage(error.message || 'Invalid request'),
         timestamp,
         correlationId,
+        details: error.field ? { field: error.field } : undefined,
       };
     }
 
-    if (error.name === 'ConflictException') {
+    if (error instanceof ConflictException) {
       return {
         code: 'ALREADY_EXISTS',
-        message: error.message || 'Resource already exists',
+        message: this.sanitizeMessage(error.message || 'Resource already exists'),
         timestamp,
         correlationId,
       };
     }
 
-    // Default to internal error
+    // For internal errors, return generic message (Requirement 17.8)
+    if (this.isCriticalError(error)) {
+      return {
+        code: 'INTERNAL',
+        message: 'An internal error occurred. Please try again later.',
+        timestamp,
+        correlationId,
+      };
+    }
+
+    // Default error
     return {
-      code: 'INTERNAL',
-      message: error.message || 'Internal server error',
+      code: 'UNKNOWN',
+      message: this.sanitizeMessage(error.message || 'An error occurred'),
       timestamp,
       correlationId,
-      details: {
-        type: error.name || 'Error',
-      },
     };
+  }
+
+  /**
+   * Sanitize error message to prevent information leakage
+   * Requirement 17.8
+   */
+  private sanitizeMessage(message: string): string {
+    // Remove database connection strings
+    message = message.replace(/postgresql:\/\/[^\s]+/gi, '[DATABASE_URL]');
+    
+    // Remove Redis connection strings
+    message = message.replace(/redis:\/\/[^\s]+/gi, '[REDIS_URL]');
+    
+    // Remove file paths
+    message = message.replace(/\/[^\s]+\.(ts|js|json)/gi, '[FILE_PATH]');
+    
+    // Remove JWT tokens
+    message = message.replace(/eyJ[A-Za-z0-9-_]+\.[A-Za-z0-9-_]+\.[A-Za-z0-9-_]+/g, '[TOKEN]');
+    
+    return message;
+  }
+
+  /**
+   * Check if error is a critical system error
+   */
+  private isCriticalError(error: any): boolean {
+    const statusCode = error.status || error.statusCode;
+    return !statusCode || statusCode >= 500;
+  }
+
+  /**
+   * Check if error is a client error (4xx)
+   */
+  private isClientError(error: any): boolean {
+    const statusCode = error.status || error.statusCode;
+    return statusCode >= 400 && statusCode < 500;
   }
 }

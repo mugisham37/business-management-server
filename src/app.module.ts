@@ -9,9 +9,17 @@ import { HealthModule } from './health/health.module';
 import { GrpcModule } from './api/grpc/grpc.module';
 import { GraphQLModule } from './api/graphql/graphql.module';
 import { CorrelationIdMiddleware } from './core/logging/correlation-id.middleware';
+import { ResilienceModule } from './core/resilience';
 
 @Module({
-  imports: [LoggingModule, ContextModule, HealthModule, GrpcModule, GraphQLModule],
+  imports: [
+    LoggingModule,
+    ContextModule,
+    ResilienceModule,
+    HealthModule,
+    GrpcModule,
+    GraphQLModule,
+  ],
   controllers: [AppController],
   providers: [
     AppService,

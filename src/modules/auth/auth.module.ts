@@ -12,6 +12,7 @@ import { CacheModule } from '../../core/cache/cache.module';
 import { DatabaseModule } from '../../core/database/database.module';
 import { LoggingModule } from '../../core/logging/logging.module';
 import { OrganizationModule } from '../organization/organization.module';
+import { ResilienceModule } from '../../core/resilience';
 
 /**
  * Auth module handling authentication, token management, and session lifecycle
@@ -23,6 +24,7 @@ import { OrganizationModule } from '../organization/organization.module';
     DatabaseModule,
     LoggingModule,
     OrganizationModule,
+    ResilienceModule,
     PassportModule.register({ defaultStrategy: 'jwt' }),
     JwtModule.registerAsync({
       imports: [ConfigModule],

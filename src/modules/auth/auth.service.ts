@@ -4,6 +4,7 @@ import {
   BadRequestException,
   Logger,
   ConflictException,
+  OnModuleInit,
 } from '@nestjs/common';
 import { PrismaService } from '../../core/database/prisma.service';
 import { TokenService } from './token.service';
@@ -13,6 +14,7 @@ import { HierarchyLevel, UserStatus } from '@prisma/client';
 import { RequestContext } from '../../common/types/user-context.type';
 import { RegisterOwnerDto, RegisterOwnerGoogleDto } from './dto/register-owner.dto';
 import { OrganizationService } from '../organization/organization.service';
+import { CircuitBreakerService } from '../../core/resilience';
 import { v4 as uuidv4 } from 'uuid';
 
 /**
@@ -38,10 +40,10 @@ export interface AuthResponse {
  * Handles user authentication across multiple methods (email/password, PIN, Google OAuth).
  * Implements account locking, failed login tracking, and session management.
  *
- * Requirements: 2.1, 2.2, 2.5, 2.6, 2.7, 2.8
+ * Requirements: 2.1, 2.2, 2.5, 2.6, 2.7, 2.8, 19.6
  */
 @Injectable()
-export class AuthService {
+export class AuthService implements OnModuleInit {
   private readonly logger = new Logger(AuthService.name);
   private readonly BCRYPT_ROUNDS = 10;
   private readonly MAX_FAILED_ATTEMPTS = 5;
@@ -52,7 +54,21 @@ export class AuthService {
     private readonly tokenService: TokenService,
     private readonly sessionService: SessionService,
     private readonly organizationService: OrganizationService,
+    private readonly circuitBreaker: CircuitBreakerService,
   ) {}
+
+  /**
+   * Initialize circuit breaker for Google OAuth
+   * Requirement 19.6
+   */
+  onModuleInit() {
+    this.circuitBreaker.register('google-oauth', {
+      failureThreshold: 5,      // Open circuit after 5 failures
+      successThreshold: 2,      // Close circuit after 2 successes
+      timeout: 60000,           // Try half-open after 60 seconds
+      requestTimeout: 10000,    // 10 second timeout per request
+    });
+  }
   /**
    * Register new organization owner with email/password
    *
@@ -227,6 +243,9 @@ export class AuthService {
 
   /**
    * Verify Google OAuth token and extract user information
+   * Uses circuit breaker to prevent cascading failures
+   * 
+   * Requirement 19.6
    *
    * @param token - Google OAuth token
    * @returns Google user information
@@ -237,22 +256,25 @@ export class AuthService {
     given_name?: string;
     family_name?: string;
   }> {
-    // TODO: Implement actual Google token verification using google-auth-library
-    // For now, this is a placeholder that should be replaced with real implementation
-    //
-    // Example implementation:
-    // const { OAuth2Client } = require('google-auth-library');
-    // const client = new OAuth2Client(process.env.GOOGLE_CLIENT_ID);
-    // const ticket = await client.verifyIdToken({
-    //   idToken: token,
-    //   audience: process.env.GOOGLE_CLIENT_ID,
-    // });
-    // const payload = ticket.getPayload();
-    // return payload;
+    // Execute with circuit breaker protection
+    return this.circuitBreaker.execute('google-oauth', async () => {
+      // TODO: Implement actual Google token verification using google-auth-library
+      // For now, this is a placeholder that should be replaced with real implementation
+      //
+      // Example implementation:
+      // const { OAuth2Client } = require('google-auth-library');
+      // const client = new OAuth2Client(process.env.GOOGLE_CLIENT_ID);
+      // const ticket = await client.verifyIdToken({
+      //   idToken: token,
+      //   audience: process.env.GOOGLE_CLIENT_ID,
+      // });
+      // const payload = ticket.getPayload();
+      // return payload;
 
-    throw new BadRequestException(
-      'Google OAuth is not yet implemented. Please use email/password registration.',
-    );
+      throw new BadRequestException(
+        'Google OAuth is not yet implemented. Please use email/password registration.',
+      );
+    });
   }
 
   /**
