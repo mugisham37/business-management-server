@@ -68,6 +68,7 @@ export class QueueModule {
           { name: QueueName.INTEGRATION },
           { name: QueueName.CLEANUP },
           { name: QueueName.DEAD_LETTER },
+          { name: QueueName.AUDIT },
         ),
       ],
       providers,

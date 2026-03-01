@@ -7,8 +7,10 @@ import { CacheModule } from '../../core/cache/cache.module';
 import { AuthModule } from '../../core/auth/auth.module';
 import { HealthModule } from '../../health/health.module';
 import { UserModule } from '../../modules/user/user.module';
+import { AuthModule as ModulesAuthModule } from '../../modules/auth/auth.module';
 import { HealthResolver } from './resolvers/health.resolver';
 import { UserResolver } from './resolvers/user.resolver';
+import { AuthResolver } from './resolvers/auth.resolver';
 
 @Module({
   imports: [
@@ -33,8 +35,9 @@ import { UserResolver } from './resolvers/user.resolver';
     AuthModule,
     HealthModule,
     UserModule,
+    ModulesAuthModule,
   ],
-  providers: [HealthResolver, UserResolver],
+  providers: [HealthResolver, UserResolver, AuthResolver],
   exports: [],
 })
 export class GraphQLModule {}

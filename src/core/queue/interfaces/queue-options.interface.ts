@@ -9,6 +9,7 @@ export enum QueueName {
   INTEGRATION = 'integration',
   CLEANUP = 'cleanup',
   DEAD_LETTER = 'dead-letter',
+  AUDIT = 'audit',
 }
 
 export enum JobPriority {
