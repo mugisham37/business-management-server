@@ -3,6 +3,7 @@ import {
   UnauthorizedException,
   BadRequestException,
   Logger,
+  ConflictException,
 } from '@nestjs/common';
 import { PrismaService } from '../../core/database/prisma.service';
 import { TokenService } from './token.service';
@@ -10,6 +11,9 @@ import { SessionService } from './session.service';
 import * as bcrypt from 'bcrypt';
 import { HierarchyLevel, UserStatus } from '@prisma/client';
 import { RequestContext } from '../../common/types/user-context.type';
+import { RegisterOwnerDto, RegisterOwnerGoogleDto } from './dto/register-owner.dto';
+import { OrganizationService } from '../organization/organization.service';
+import { v4 as uuidv4 } from 'uuid';
 
 /**
  * Response returned after successful authentication
@@ -47,7 +51,209 @@ export class AuthService {
     private readonly prisma: PrismaService,
     private readonly tokenService: TokenService,
     private readonly sessionService: SessionService,
+    private readonly organizationService: OrganizationService,
   ) {}
+  /**
+   * Register new organization owner with email/password
+   *
+   * Requirement 1.1, 1.2: Create organization, user with hierarchyLevel=OWNER,
+   * and grant all module permissions automatically
+   * Requirement 14.1: Validate password strength
+   * Requirement 1.6: Return access and refresh tokens
+   *
+   * @param dto - Owner registration data
+   * @param context - Request context (IP, user agent)
+   * @returns Authentication response with tokens
+   */
+  async registerOwner(
+    dto: RegisterOwnerDto,
+    context: RequestContext,
+  ): Promise<AuthResponse> {
+    this.logger.debug(`Owner registration for email: ${dto.email}`);
+
+    // Check if user already exists with this email
+    const existingUser = await this.prisma.users.findFirst({
+      where: { email: dto.email },
+    });
+
+    if (existingUser) {
+      throw new ConflictException('User with this email already exists');
+    }
+
+    // Hash password
+    const passwordHash = await bcrypt.hash(dto.password, this.BCRYPT_ROUNDS);
+
+    // Create organization and user in a transaction
+    const result = await this.prisma.$transaction(async (tx) => {
+      // Create user first to get the ID
+      const userId = uuidv4();
+
+      // Create organization
+      const organization = await tx.organizations.create({
+        data: {
+          id: uuidv4(),
+          name: dto.organizationName,
+          type: dto.organizationType,
+          settings: dto.organizationSettings || {},
+          ownerId: userId,
+          updatedAt: new Date(),
+        },
+      });
+
+      // Create owner user
+      const user = await tx.users.create({
+        data: {
+          id: userId,
+          email: dto.email,
+          passwordHash,
+          firstName: dto.firstName,
+          lastName: dto.lastName,
+          organizationId: organization.id,
+          hierarchyLevel: HierarchyLevel.OWNER,
+          status: UserStatus.ACTIVE,
+          branchId: null, // Owner has organization-wide scope
+          departmentId: null,
+          createdById: null, // Owner creates themselves
+          updatedAt: new Date(),
+        },
+      });
+
+      return { user, organization };
+    });
+
+    // Initialize owner permissions (outside transaction for better error handling)
+    await this.organizationService.initializeOwnerPermissions(
+      result.user.id,
+      result.organization.id,
+    );
+
+    this.logger.log(
+      `Owner registered successfully: ${result.user.id} for organization: ${result.organization.id}`,
+    );
+
+    // Generate tokens and create session
+    return this.createAuthResponse(result.user, context);
+  }
+
+  /**
+   * Register new organization owner with Google OAuth
+   *
+   * Requirement 1.1, 1.2: Create organization, user with hierarchyLevel=OWNER,
+   * and grant all module permissions automatically
+   * Requirement 1.6: Return access and refresh tokens
+   *
+   * @param dto - Owner registration data with Google token
+   * @param context - Request context (IP, user agent)
+   * @returns Authentication response with tokens
+   */
+  async registerOwnerWithGoogle(
+    dto: RegisterOwnerGoogleDto,
+    context: RequestContext,
+  ): Promise<AuthResponse> {
+    this.logger.debug(`Owner registration with Google OAuth`);
+
+    // Verify Google token and extract user info
+    const googleUserInfo = await this.verifyGoogleToken(dto.googleToken);
+
+    // Check if user already exists with this Google ID
+    const existingUser = await this.prisma.users.findFirst({
+      where: { googleId: googleUserInfo.sub },
+    });
+
+    if (existingUser) {
+      throw new ConflictException('User with this Google account already exists');
+    }
+
+    // Check if user already exists with this email
+    const existingEmailUser = await this.prisma.users.findFirst({
+      where: { email: googleUserInfo.email },
+    });
+
+    if (existingEmailUser) {
+      throw new ConflictException('User with this email already exists');
+    }
+
+    // Create organization and user in a transaction
+    const result = await this.prisma.$transaction(async (tx) => {
+      // Create user first to get the ID
+      const userId = uuidv4();
+
+      // Create organization
+      const organization = await tx.organizations.create({
+        data: {
+          id: uuidv4(),
+          name: dto.organizationName,
+          type: dto.organizationType,
+          settings: dto.organizationSettings || {},
+          ownerId: userId,
+          updatedAt: new Date(),
+        },
+      });
+
+      // Create owner user
+      const user = await tx.users.create({
+        data: {
+          id: userId,
+          email: googleUserInfo.email,
+          googleId: googleUserInfo.sub,
+          firstName: googleUserInfo.given_name || null,
+          lastName: googleUserInfo.family_name || null,
+          organizationId: organization.id,
+          hierarchyLevel: HierarchyLevel.OWNER,
+          status: UserStatus.ACTIVE,
+          branchId: null, // Owner has organization-wide scope
+          departmentId: null,
+          createdById: null, // Owner creates themselves
+          updatedAt: new Date(),
+        },
+      });
+
+      return { user, organization };
+    });
+
+    // Initialize owner permissions (outside transaction for better error handling)
+    await this.organizationService.initializeOwnerPermissions(
+      result.user.id,
+      result.organization.id,
+    );
+
+    this.logger.log(
+      `Owner registered with Google successfully: ${result.user.id} for organization: ${result.organization.id}`,
+    );
+
+    // Generate tokens and create session
+    return this.createAuthResponse(result.user, context);
+  }
+
+  /**
+   * Verify Google OAuth token and extract user information
+   *
+   * @param token - Google OAuth token
+   * @returns Google user information
+   */
+  private async verifyGoogleToken(token: string): Promise<{
+    sub: string;
+    email: string;
+    given_name?: string;
+    family_name?: string;
+  }> {
+    // TODO: Implement actual Google token verification using google-auth-library
+    // For now, this is a placeholder that should be replaced with real implementation
+    //
+    // Example implementation:
+    // const { OAuth2Client } = require('google-auth-library');
+    // const client = new OAuth2Client(process.env.GOOGLE_CLIENT_ID);
+    // const ticket = await client.verifyIdToken({
+    //   idToken: token,
+    //   audience: process.env.GOOGLE_CLIENT_ID,
+    // });
+    // const payload = ticket.getPayload();
+    // return payload;
+
+    throw new BadRequestException(
+      'Google OAuth is not yet implemented. Please use email/password registration.',
+    );
+  }
 
   /**
    * Login with email and password

@@ -11,6 +11,7 @@ import { RateLimitGuard } from './guards/rate-limit.guard';
 import { CacheModule } from '../../core/cache/cache.module';
 import { DatabaseModule } from '../../core/database/database.module';
 import { LoggingModule } from '../../core/logging/logging.module';
+import { OrganizationModule } from '../organization/organization.module';
 
 /**
  * Auth module handling authentication, token management, and session lifecycle
@@ -21,6 +22,7 @@ import { LoggingModule } from '../../core/logging/logging.module';
     CacheModule,
     DatabaseModule,
     LoggingModule,
+    OrganizationModule,
     PassportModule.register({ defaultStrategy: 'jwt' }),
     JwtModule.registerAsync({
       imports: [ConfigModule],
