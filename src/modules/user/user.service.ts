@@ -291,6 +291,28 @@ export class UserService {
   }
 
   /**
+   * Find all users in organization
+   * Requirement: 4.1
+   * Note: Scope filtering is applied by Prisma middleware
+   */
+  async findAll(organizationId: string): Promise<any[]> {
+    return this.prisma.users.findMany({
+      where: {
+        organizationId,
+      },
+      include: {
+        staff_profiles: true,
+        branches: true,
+        departments: true,
+      },
+      orderBy: {
+        createdAt: 'desc',
+      },
+    });
+  }
+
+
+  /**
    * Generate temporary password (8 characters, mixed case, numbers, special chars)
    */
   private generateTemporaryPassword(): string {

@@ -3,3 +3,7 @@ export * from './error.type';
 export * from './health.type';
 export * from './auth.type';
 export * from './user.type';
+export * from './user-management.type';
+export * from './permission.type';
+export * from './organization.type';
+export * from './business-rule.type';

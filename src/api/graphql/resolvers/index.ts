@@ -2,3 +2,8 @@ export * from './base.resolver';
 export * from './health.resolver';
 export * from './auth.resolver';
 export * from './user.resolver';
+export * from './permission.resolver';
+export * from './organization.resolver';
+export * from './branch.resolver';
+export * from './department.resolver';
+export * from './business-rule.resolver';

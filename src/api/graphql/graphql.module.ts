@@ -4,13 +4,20 @@ import { ApolloDriver, ApolloDriverConfig } from '@nestjs/apollo';
 import { join } from 'path';
 import { DatabaseModule } from '../../core/database/database.module';
 import { CacheModule } from '../../core/cache/cache.module';
-import { AuthModule } from '../../core/auth/auth.module';
 import { HealthModule } from '../../health/health.module';
 import { UserModule } from '../../modules/user/user.module';
-import { AuthModule as ModulesAuthModule } from '../../modules/auth/auth.module';
+import { AuthModule } from '../../modules/auth/auth.module';
+import { AuthorizationModule } from '../../modules/authorization/authorization.module';
+import { PermissionModule } from '../../modules/permission/permission.module';
+import { OrganizationModule } from '../../modules/organization/organization.module';
 import { HealthResolver } from './resolvers/health.resolver';
 import { UserResolver } from './resolvers/user.resolver';
 import { AuthResolver } from './resolvers/auth.resolver';
+import { PermissionResolver } from './resolvers/permission.resolver';
+import { OrganizationResolver } from './resolvers/organization.resolver';
+import { BranchResolver } from './resolvers/branch.resolver';
+import { DepartmentResolver } from './resolvers/department.resolver';
+import { BusinessRuleResolver } from './resolvers/business-rule.resolver';
 
 @Module({
   imports: [
@@ -32,12 +39,23 @@ import { AuthResolver } from './resolvers/auth.resolver';
     }),
     DatabaseModule,
     CacheModule,
-    AuthModule,
     HealthModule,
     UserModule,
-    ModulesAuthModule,
+    AuthModule,
+    AuthorizationModule,
+    PermissionModule,
+    OrganizationModule,
   ],
-  providers: [HealthResolver, UserResolver, AuthResolver],
+  providers: [
+    HealthResolver,
+    UserResolver,
+    AuthResolver,
+    PermissionResolver,
+    OrganizationResolver,
+    BranchResolver,
+    DepartmentResolver,
+    BusinessRuleResolver,
+  ],
   exports: [],
 })
 export class GraphQLModule {}

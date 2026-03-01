@@ -182,6 +182,54 @@ export class BusinessRulesService {
   }
 
   /**
+   * Get all rules for organization
+   * Requirement 10.1
+   * 
+   * @param organizationId - Organization ID
+   * @returns Array of all rules ordered by priority (highest first)
+   */
+  async getAllRules(
+    organizationId: string,
+  ): Promise<Array<{
+    id: string;
+    organizationId: string;
+    ruleName: string;
+    transactionType: string;
+    basedOn: string;
+    thresholdValue: number;
+    appliesToLevel: HierarchyLevel;
+    approverLevel: HierarchyLevel;
+    isActive: boolean;
+    priority: number;
+    createdAt: Date;
+    updatedAt: Date;
+  }>> {
+    try {
+      const rules = await this.prismaService.authorization_rules.findMany({
+        where: {
+          organizationId,
+        },
+        orderBy: {
+          priority: 'desc',
+        },
+      });
+
+      this.logger.logWithMetadata('debug', 'Retrieved all rules', {
+        organizationId,
+        ruleCount: rules.length,
+      });
+
+      return rules;
+    } catch (error) {
+      this.logger.logWithMetadata('error', 'Error retrieving all rules', {
+        organizationId,
+        error: error instanceof Error ? error.message : 'Unknown error',
+      });
+      throw error;
+    }
+  }
+
+  /**
    * Create authorization rule
    * Requirement 10.1
    * 
