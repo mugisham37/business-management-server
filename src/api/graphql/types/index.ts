@@ -7,3 +7,4 @@ export * from './user-management.type';
 export * from './permission.type';
 export * from './organization.type';
 export * from './business-rule.type';
+export * from './audit.type';

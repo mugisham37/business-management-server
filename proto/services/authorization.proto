@@ -1,0 +1,105 @@
+syntax = "proto3";
+
+package authorization;
+
+import "common/common.proto";
+
+// Authorization service for inter-service permission checks
+service AuthorizationService {
+  // Check if user has permission for a specific action
+  rpc CheckPermission(CheckPermissionRequest) returns (CheckPermissionResponse);
+  
+  // Validate access token and return user identity
+  rpc ValidateToken(ValidateTokenRequest) returns (ValidateTokenResponse);
+  
+  // Get all active permissions for a user
+  rpc GetUserPermissions(GetUserPermissionsRequest) returns (GetUserPermissionsResponse);
+}
+
+// Hierarchy level enum
+enum HierarchyLevel {
+  HIERARCHY_LEVEL_UNSPECIFIED = 0;
+  OWNER = 1;
+  MANAGER = 2;
+  WORKER = 3;
+}
+
+// Check permission request
+message CheckPermissionRequest {
+  string user_id = 1;
+  string module = 2;
+  string action = 3;
+  optional string resource_id = 4;
+  optional ResourceScope resource_scope = 5;
+  optional TransactionContext transaction_context = 6;
+  map<string, string> trace_metadata = 7; // For distributed tracing
+}
+
+// Resource scope for Layer 3 checks
+message ResourceScope {
+  optional string branch_id = 1;
+  optional string department_id = 2;
+}
+
+// Transaction context for Layer 4 business rules
+message TransactionContext {
+  string transaction_type = 1;
+  double amount = 2;
+}
+
+// Check permission response
+message CheckPermissionResponse {
+  bool authorized = 1;
+  optional string failed_layer = 2; // Which layer failed: "HIERARCHY", "PERMISSION", "SCOPE", "BUSINESS_RULES"
+  optional string reason = 3; // Human-readable failure reason
+  bool requires_approval = 4; // If business rules require approval
+  optional HierarchyLevel approver_level = 5; // Required approver level if approval needed
+  map<string, string> trace_metadata = 6; // For distributed tracing
+}
+
+// Validate token request
+message ValidateTokenRequest {
+  string access_token = 1;
+  map<string, string> trace_metadata = 2; // For distributed tracing
+}
+
+// Validate token response
+message ValidateTokenResponse {
+  bool valid = 1;
+  optional UserIdentity user_identity = 2;
+  optional string error_code = 3; // "EXPIRED", "INVALID_SIGNATURE", "BLACKLISTED", "FINGERPRINT_MISMATCH"
+  optional string error_message = 4;
+  map<string, string> trace_metadata = 5; // For distributed tracing
+}
+
+// User identity from token
+message UserIdentity {
+  string user_id = 1;
+  string organization_id = 2;
+  HierarchyLevel hierarchy_level = 3;
+  optional string branch_id = 4;
+  optional string department_id = 5;
+  string permission_fingerprint = 6;
+  string email = 7;
+  int64 issued_at = 8; // Unix timestamp
+  int64 expires_at = 9; // Unix timestamp
+}
+
+// Get user permissions request
+message GetUserPermissionsRequest {
+  string user_id = 1;
+  map<string, string> trace_metadata = 2; // For distributed tracing
+}
+
+// Get user permissions response
+message GetUserPermissionsResponse {
+  repeated ModulePermission permissions = 1;
+  string permission_fingerprint = 2;
+  map<string, string> trace_metadata = 3; // For distributed tracing
+}
+
+// Module permission
+message ModulePermission {
+  string module = 1;
+  repeated string actions = 2;
+}

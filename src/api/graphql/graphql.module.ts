@@ -10,6 +10,7 @@ import { AuthModule } from '../../modules/auth/auth.module';
 import { AuthorizationModule } from '../../modules/authorization/authorization.module';
 import { PermissionModule } from '../../modules/permission/permission.module';
 import { OrganizationModule } from '../../modules/organization/organization.module';
+import { AuditModule } from '../../modules/audit/audit.module';
 import { HealthResolver } from './resolvers/health.resolver';
 import { UserResolver } from './resolvers/user.resolver';
 import { AuthResolver } from './resolvers/auth.resolver';
@@ -18,6 +19,7 @@ import { OrganizationResolver } from './resolvers/organization.resolver';
 import { BranchResolver } from './resolvers/branch.resolver';
 import { DepartmentResolver } from './resolvers/department.resolver';
 import { BusinessRuleResolver } from './resolvers/business-rule.resolver';
+import { AuditResolver } from './resolvers/audit.resolver';
 
 @Module({
   imports: [
@@ -45,6 +47,7 @@ import { BusinessRuleResolver } from './resolvers/business-rule.resolver';
     AuthorizationModule,
     PermissionModule,
     OrganizationModule,
+    AuditModule,
   ],
   providers: [
     HealthResolver,
@@ -55,6 +58,7 @@ import { BusinessRuleResolver } from './resolvers/business-rule.resolver';
     BranchResolver,
     DepartmentResolver,
     BusinessRuleResolver,
+    AuditResolver,
   ],
   exports: [],
 })

@@ -7,3 +7,4 @@ export * from './organization.resolver';
 export * from './branch.resolver';
 export * from './department.resolver';
 export * from './business-rule.resolver';
+export * from './audit.resolver';
