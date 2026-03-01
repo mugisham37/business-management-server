@@ -4,7 +4,9 @@ import { softDeleteMiddleware } from './middleware/soft-delete.middleware';
 import { tenantMiddleware } from './middleware/tenant.middleware';
 import { auditMiddleware } from './middleware/audit.middleware';
 import { timestampMiddleware } from './middleware/timestamp.middleware';
+import { scopeFilterMiddleware } from './middleware/scope-filter.middleware';
 import { LoggerService } from '../logging/logger.service';
+import { RequestContextService } from '../context/request-context.service';
 
 /**
  * Prisma Service
@@ -23,7 +25,10 @@ import { LoggerService } from '../logging/logger.service';
 export class PrismaService extends PrismaClient implements OnModuleInit, OnModuleDestroy {
   private readonly logger: LoggerService;
 
-  constructor(loggerService: LoggerService) {
+  constructor(
+    loggerService: LoggerService,
+    private readonly requestContextService: RequestContextService,
+  ) {
     super({
       log: [
         { emit: 'event', level: 'query' },
@@ -37,9 +42,10 @@ export class PrismaService extends PrismaClient implements OnModuleInit, OnModul
     this.logger.setContext('PrismaService');
 
     // Register middleware in order
-    // Order matters: timestamp -> tenant -> soft-delete -> audit
+    // Order matters: timestamp -> tenant -> scope-filter -> soft-delete -> audit
     this.$use(timestampMiddleware());
     this.$use(tenantMiddleware());
+    this.$use(scopeFilterMiddleware(this.requestContextService));
     this.$use(softDeleteMiddleware());
     this.$use(auditMiddleware(this));
 
