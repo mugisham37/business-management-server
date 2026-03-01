@@ -300,6 +300,85 @@ export class TokenService {
       throw new Error('Failed to revoke token');
     }
   }
+  /**
+   * Refresh access token using refresh token with rotation
+   * Requirements: 3.3, 3.4
+   */
+  async refreshAccessToken(
+    refreshToken: string,
+    sessionService: any,
+  ): Promise<{ accessToken: string; refreshToken: string; expiresIn: number }> {
+    try {
+      // Find session by refresh token
+      const session = await sessionService.findByRefreshToken(refreshToken);
+
+      if (!session) {
+        this.logger.warn('Invalid or expired refresh token');
+        throw new Error('Invalid or expired refresh token');
+      }
+
+      // Get user from database
+      const user = await this.prismaService.users.findUnique({
+        where: { id: session.userId },
+      });
+
+      if (!user) {
+        this.logger.warn('User not found for session');
+        throw new Error('User not found');
+      }
+
+      // Get current user permissions
+      const permissionMatrices = await this.prismaService.permission_matrices.findMany({
+        where: {
+          userId: user.id,
+          revokedAt: null,
+        },
+        select: {
+          module: true,
+          actions: true,
+        },
+      });
+
+      const permissions: PermissionSet = {
+        modules: new Map(),
+        fingerprint: '',
+      };
+
+      for (const pm of permissionMatrices) {
+        permissions.modules.set(pm.module, pm.actions);
+      }
+
+      permissions.fingerprint = this.calculatePermissionFingerprint(permissions);
+
+      // Generate new access token
+      const newAccessToken = await this.generateAccessToken(user, permissions);
+
+      // Generate new refresh token
+      const newRefreshToken = await this.generateRefreshToken();
+
+      // Rotate refresh token: revoke old session and create new one
+      await sessionService.rotateRefreshToken(
+        session.id,
+        newRefreshToken,
+        permissions.fingerprint,
+      );
+
+      this.logger.logWithMetadata('info', 'Access token refreshed', {
+        userId: user.id,
+        sessionId: session.id,
+      });
+
+      return {
+        accessToken: newAccessToken,
+        refreshToken: newRefreshToken,
+        expiresIn: this.accessTokenExpiry,
+      };
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+      this.logger.error('Error refreshing access token:', errorMessage);
+      throw new Error('Failed to refresh access token');
+    }
+  }
 
   /**
    * Check if token is blacklisted

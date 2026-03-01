@@ -548,6 +548,60 @@ export class AuthService implements OnModuleInit {
 
     this.logger.log(`User ${userId} logged out successfully`);
   }
+  /**
+   * Refresh access token using refresh token
+   *
+   * Requirements: 3.3, 3.4
+   *
+   * @param refreshToken - Refresh token
+   * @returns New access and refresh tokens
+   */
+  async refreshToken(refreshToken: string): Promise<AuthResponse> {
+    this.logger.debug('Refreshing access token');
+
+    try {
+      // Use TokenService to refresh the access token
+      const result = await this.tokenService.refreshAccessToken(
+        refreshToken,
+        this.sessionService,
+      );
+
+      // Get user info for response
+      const session = await this.sessionService.findByRefreshToken(result.refreshToken);
+
+      if (!session) {
+        throw new UnauthorizedException('Session not found');
+      }
+
+      const user = await this.prisma.users.findUnique({
+        where: { id: session.userId },
+      });
+
+      if (!user) {
+        throw new UnauthorizedException('User not found');
+      }
+
+      this.logger.log(`Access token refreshed for user: ${user.id}`);
+
+      return {
+        accessToken: result.accessToken,
+        refreshToken: result.refreshToken,
+        user: {
+          id: user.id,
+          email: user.email,
+          firstName: user.firstName,
+          lastName: user.lastName,
+          hierarchyLevel: user.hierarchyLevel,
+          organizationId: user.organizationId,
+        },
+        expiresIn: result.expiresIn,
+      };
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+      this.logger.error(`Failed to refresh token: ${errorMessage}`);
+      throw new UnauthorizedException('Failed to refresh token');
+    }
+  }
 
   /**
    * Check account status and handle automatic unlocking

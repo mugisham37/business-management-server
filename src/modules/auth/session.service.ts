@@ -216,4 +216,53 @@ export class SessionService {
     this.logger.debug(`Found ${sessions.length} active sessions for user ${userId}`);
     return sessions;
   }
+  /**
+   * Rotate refresh token by revoking old session and creating new one
+   *
+   * Requirement 3.4: When a refresh token is used successfully, rotate the refresh token
+   * by revoking the old one and issuing a new one with extended expiry
+   *
+   * @param oldSessionId - ID of the old session to revoke
+   * @param newRefreshToken - New plaintext refresh token
+   * @param accessTokenFingerprint - Fingerprint of the new access token
+   * @returns Created session record
+   */
+  async rotateRefreshToken(
+    oldSessionId: string,
+    newRefreshToken: string,
+    accessTokenFingerprint: string,
+  ): Promise<Session> {
+    this.logger.debug(`Rotating refresh token for session ${oldSessionId}`);
+
+    // Get old session to extract user info
+    const oldSession = await this.prisma.sessions.findUnique({
+      where: { id: oldSessionId },
+    });
+
+    if (!oldSession) {
+      throw new UnauthorizedException('Session not found');
+    }
+
+    // Revoke old session
+    await this.revokeSession(oldSessionId);
+
+    // Create new session with extended expiry
+    const expiresAt = new Date();
+    expiresAt.setDate(expiresAt.getDate() + 7); // 7 days
+
+    const newSession = await this.createSession({
+      userId: oldSession.userId,
+      refreshToken: newRefreshToken,
+      accessTokenFingerprint,
+      ipAddress: oldSession.ipAddress || '',
+      userAgent: oldSession.userAgent || '',
+      expiresAt,
+    });
+
+    this.logger.log(
+      `Refresh token rotated: old session ${oldSessionId} -> new session ${newSession.id}`,
+    );
+
+    return newSession;
+  }
 }

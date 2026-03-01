@@ -99,3 +99,27 @@ export class ChangePasswordInput {
   @Field()
   newPassword!: string;
 }
+
+@ObjectType()
+export class SessionType {
+  @Field()
+  id!: string;
+
+  @Field()
+  ipAddress!: string;
+
+  @Field()
+  userAgent!: string;
+
+  @Field()
+  createdAt!: Date;
+
+  @Field()
+  expiresAt!: Date;
+}
+
+@InputType()
+export class RevokeSessionInput {
+  @Field()
+  sessionId!: string;
+}

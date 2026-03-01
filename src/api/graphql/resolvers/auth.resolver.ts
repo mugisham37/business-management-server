@@ -1,9 +1,11 @@
-import { Resolver, Mutation, Args, Context } from '@nestjs/graphql';
+import { Resolver, Mutation, Args, Context, Query } from '@nestjs/graphql';
 import { UseGuards } from '@nestjs/common';
 import { BaseResolver } from './base.resolver';
 import { AuthService } from '../../../modules/auth/auth.service';
 import { UserService } from '../../../modules/user/user.service';
+import { SessionService } from '../../../modules/auth/session.service';
 import { GqlAuthGuard } from '../guards/gql-auth.guard';
+import { RateLimitGuard } from '../../../modules/auth/guards/rate-limit.guard';
 import { GqlCurrentUser } from '../decorators/current-user.decorator';
 import { Public } from '../../../modules/auth/decorators/public.decorator';
 import { OrganizationType } from '@prisma/client';
@@ -14,6 +16,8 @@ import {
   LoginWithPinInput,
   RefreshTokenInput,
   ChangePasswordInput,
+  SessionType,
+  RevokeSessionInput,
 } from '../types/auth.type';
 import { RequestContext } from '../../../common/types/user-context.type';
 
@@ -34,6 +38,7 @@ export class AuthResolver extends BaseResolver {
   constructor(
     private readonly authService: AuthService,
     private readonly userService: UserService,
+    private readonly sessionService: SessionService,
   ) {
     super('AuthResolver');
   }
@@ -79,12 +84,14 @@ export class AuthResolver extends BaseResolver {
    * Login with email and password
    *
    * Requirement 2.1: Validate credentials and return JWT tokens
+   * Requirement 2.9, 17.1: Rate limiting applied (5 attempts per 15 minutes)
    *
    * @param input - Login credentials
    * @param context - GraphQL context with request information
    * @returns Authentication response with tokens
    */
   @Public()
+  @UseGuards(RateLimitGuard)
   @Mutation(() => AuthResponse, { name: 'login' })
   async login(
     @Args('input') input: LoginInput,
@@ -108,12 +115,14 @@ export class AuthResolver extends BaseResolver {
    * Login with PIN (workers only)
    *
    * Requirement 2.2: Validate PIN and return JWT tokens for workers
+   * Requirement 2.9, 17.1: Rate limiting applied (5 attempts per 15 minutes)
    *
    * @param input - PIN login credentials
    * @param context - GraphQL context with request information
    * @returns Authentication response with tokens
    */
   @Public()
+  @UseGuards(RateLimitGuard)
   @Mutation(() => AuthResponse, { name: 'loginWithPin' })
   async loginWithPin(
     @Args('input') input: LoginWithPinInput,
@@ -179,11 +188,9 @@ export class AuthResolver extends BaseResolver {
   ): Promise<AuthResponse> {
     this.logOperation('refreshToken');
 
-    // TODO: Implement refreshAccessToken in TokenService
-    // For now, throw an error indicating it's not yet implemented
-    throw new Error(
-      'Token refresh is not yet implemented. Please implement refreshAccessToken in TokenService.',
-    );
+    const result = await this.authService.refreshToken(input.refreshToken);
+
+    return result;
   }
 
   /**
@@ -237,5 +244,94 @@ export class AuthResolver extends BaseResolver {
     const req = context.req;
     const authHeader = req.headers.authorization || '';
     return authHeader.replace('Bearer ', '');
+  }
+
+  /**
+   * Get active sessions for current user
+   *
+   * Requirement 13.5: Allow users to view all active sessions
+   *
+   * @param currentUser - Current authenticated user
+   * @returns Array of active sessions
+   */
+  @UseGuards(GqlAuthGuard)
+  @Query(() => [SessionType], { name: 'getActiveSessions' })
+  async getActiveSessions(
+    @GqlCurrentUser() currentUser: any,
+  ): Promise<SessionType[]> {
+    this.logOperation('getActiveSessions', { userId: currentUser.userId });
+
+    const sessions = await this.sessionService.getActiveSessions(
+      currentUser.userId,
+    );
+
+    // Map to GraphQL type, excluding sensitive fields
+    return sessions.map((session) => ({
+      id: session.id,
+      ipAddress: session.ipAddress || 'unknown',
+      userAgent: session.userAgent || 'unknown',
+      createdAt: session.createdAt,
+      expiresAt: session.expiresAt,
+    }));
+  }
+
+  /**
+   * Revoke a specific session
+   *
+   * Requirement 13.6: Allow users to revoke specific sessions
+   *
+   * @param input - Session ID to revoke
+   * @param currentUser - Current authenticated user
+   * @returns Success boolean
+   */
+  @UseGuards(GqlAuthGuard)
+  @Mutation(() => Boolean, { name: 'revokeSession' })
+  async revokeSession(
+    @Args('input') input: RevokeSessionInput,
+    @GqlCurrentUser() currentUser: any,
+  ): Promise<boolean> {
+    this.logOperation('revokeSession', {
+      userId: currentUser.userId,
+      sessionId: input.sessionId,
+    });
+
+    // Verify the session belongs to the current user
+    const sessions = await this.sessionService.getActiveSessions(
+      currentUser.userId,
+    );
+    const sessionExists = sessions.some((s) => s.id === input.sessionId);
+
+    if (!sessionExists) {
+      throw new Error('Session not found or already revoked');
+    }
+
+    await this.sessionService.revokeSession(input.sessionId);
+
+    return true;
+  }
+
+  /**
+   * Revoke all sessions except the current one
+   *
+   * Requirement 13.6: Allow users to revoke all sessions except current
+   *
+   * @param currentUser - Current authenticated user
+   * @returns Success boolean
+   */
+  @UseGuards(GqlAuthGuard)
+  @Mutation(() => Boolean, { name: 'revokeAllSessions' })
+  async revokeAllSessions(
+    @GqlCurrentUser() currentUser: any,
+  ): Promise<boolean> {
+    this.logOperation('revokeAllSessions', { userId: currentUser.userId });
+
+    const currentSessionId = currentUser.sessionId || '';
+
+    await this.sessionService.revokeAllUserSessions(
+      currentUser.userId,
+      currentSessionId,
+    );
+
+    return true;
   }
 }

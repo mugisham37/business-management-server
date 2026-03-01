@@ -9,6 +9,7 @@ import { HealthModule } from './health/health.module';
 import { GrpcModule } from './api/grpc/grpc.module';
 import { GraphQLModule } from './api/graphql/graphql.module';
 import { CorrelationIdMiddleware } from './core/logging/correlation-id.middleware';
+import { SanitizationMiddleware } from './common/middleware/sanitization.middleware';
 import { ResilienceModule } from './core/resilience';
 
 @Module({
@@ -27,10 +28,13 @@ import { ResilienceModule } from './core/resilience';
       provide: APP_INTERCEPTOR,
       useClass: RequestContextInterceptor,
     },
+    SanitizationMiddleware,
   ],
 })
 export class AppModule implements NestModule {
   configure(consumer: MiddlewareConsumer) {
-    consumer.apply(CorrelationIdMiddleware).forRoutes('*');
+    consumer
+      .apply(CorrelationIdMiddleware, SanitizationMiddleware)
+      .forRoutes('*');
   }
 }
