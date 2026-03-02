@@ -5,24 +5,24 @@ import { StaffProfileDto } from './create-manager.dto';
 export class CreateWorkerDto {
   @IsEmail()
   @IsNotEmpty()
-  email: string;
+  email!: string;
 
   @IsString()
   @IsNotEmpty()
-  firstName: string;
+  firstName!: string;
 
   @IsString()
   @IsNotEmpty()
-  lastName: string;
+  lastName!: string;
 
   @IsUUID()
   @IsNotEmpty()
-  organizationId: string;
+  organizationId!: string;
 
   @ValidateNested()
   @Type(() => StaffProfileDto)
   @IsNotEmpty()
-  staffProfile: StaffProfileDto;
+  staffProfile!: StaffProfileDto;
 
   @IsBoolean()
   @IsOptional()

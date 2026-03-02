@@ -4,7 +4,7 @@ import { Type } from 'class-transformer';
 export class StaffProfileDto {
   @IsString()
   @IsNotEmpty()
-  fullName: string;
+  fullName!: string;
 
   @IsString()
   @IsOptional()
@@ -21,19 +21,19 @@ export class StaffProfileDto {
 export class CreateManagerDto {
   @IsEmail()
   @IsNotEmpty()
-  email: string;
+  email!: string;
 
   @IsString()
   @IsNotEmpty()
-  firstName: string;
+  firstName!: string;
 
   @IsString()
   @IsNotEmpty()
-  lastName: string;
+  lastName!: string;
 
   @IsUUID()
   @IsNotEmpty()
-  organizationId: string;
+  organizationId!: string;
 
   @IsUUID()
   @IsOptional()
@@ -46,5 +46,5 @@ export class CreateManagerDto {
   @ValidateNested()
   @Type(() => StaffProfileDto)
   @IsNotEmpty()
-  staffProfile: StaffProfileDto;
+  staffProfile!: StaffProfileDto;
 }
