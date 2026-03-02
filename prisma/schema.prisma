@@ -99,14 +99,14 @@ model organizations {
   type                                      OrganizationType
   status                                    OrganizationStatus    @default(ACTIVE)
   settings                                  Json?
-  ownerId                                   String                @unique
+  ownerId                                   String?               @unique
   createdAt                                 DateTime              @default(now())
   updatedAt                                 DateTime
   audit_logs                                audit_logs[]
   authorization_rules                       authorization_rules[]
   branches                                  branches[]
   departments                               departments[]
-  users_organizations_ownerIdTousers        users                 @relation("organizations_ownerIdTousers", fields: [ownerId], references: [id])
+  users_organizations_ownerIdTousers        users?                @relation("organizations_ownerIdTousers", fields: [ownerId], references: [id])
   permission_matrices                       permission_matrices[]
   users_users_organizationIdToorganizations users[]               @relation("users_organizationIdToorganizations")
 

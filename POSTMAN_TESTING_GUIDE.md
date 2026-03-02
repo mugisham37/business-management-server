@@ -52,7 +52,7 @@ gRPC Endpoint: 0.0.0.0:5000
 **Collection Settings:**
 1. Create a new collection named "ERP System - GraphQL"
 2. Add collection variables:
-   - `baseUrl`: `http://localhost:3001`
+   - `baseUrl`: ``
    - `graphqlUrl`: `{{baseUrl}}/graphql`
    - `accessToken`: (will be set after login)
    - `refreshToken`: (will be set after login)
@@ -83,7 +83,7 @@ Content-Type: application/json
 ```graphql
 mutation RegisterOwner {
   registerOwner(input: {
-    email: "owner@example.com"
+    email: "mugisham505@gmail.com.com"
     password: "SecurePass123!"
     firstName: "John"
     lastName: "Doe"

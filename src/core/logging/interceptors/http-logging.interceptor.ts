@@ -174,7 +174,7 @@ export class HttpLoggingInterceptor implements NestInterceptor {
     const operationName = info.operation?.name?.value || 'anonymous';
     const fieldName = info.fieldName;
     const parentType = info.parentType?.name || 'unknown';
-    const correlationId = request?.correlationId || 'N/A';
+    const correlationId = request?.correlationId ?? ctx?.correlationId ?? 'N/A';
     const userId = ctx.req?.user?.userId || 'anonymous';
 
     const startTime = Date.now();

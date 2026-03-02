@@ -63,8 +63,16 @@ import { ResilienceModule } from './core/resilience';
 })
 export class AppModule implements NestModule {
   configure(consumer: MiddlewareConsumer) {
+    // Apply CorrelationIdMiddleware to all routes
     consumer
-      .apply(CorrelationIdMiddleware, SanitizationMiddleware)
+      .apply(CorrelationIdMiddleware)
+      .forRoutes('*');
+    
+    // Apply SanitizationMiddleware to all routes EXCEPT GraphQL
+    // GraphQL has its own validation and sanitization mechanisms
+    consumer
+      .apply(SanitizationMiddleware)
+      .exclude('graphql')
       .forRoutes('*');
   }
 }

@@ -72,8 +72,8 @@ export class OrganizationService {
       module: perm.module,
       actions: perm.actions,
       grantedById: ownerId, // Owner grants to themselves
-      grantedAt: new Date(),
-      revokedAt: null,
+      // grantedAt has @default(now()) in schema
+      // revokedAt is optional, defaults to null
     }));
 
     // Bulk create all permissions

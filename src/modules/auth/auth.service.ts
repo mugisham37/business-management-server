@@ -100,23 +100,27 @@ export class AuthService implements OnModuleInit {
     const passwordHash = await bcrypt.hash(dto.password, this.BCRYPT_ROUNDS);
 
     // Create organization and user in a transaction
+    // Three-step process to handle circular dependency:
+    // 1. Create organization without owner
+    // 2. Create user with organizationId
+    // 3. Update organization to set ownerId
     const result = await this.prisma.$transaction(async (tx) => {
-      // Create user first to get the ID
       const userId = uuidv4();
+      const organizationId = uuidv4();
 
-      // Create organization
+      // Step 1: Create organization without owner
       const organization = await tx.organizations.create({
         data: {
-          id: uuidv4(),
+          id: organizationId,
           name: dto.organizationName,
           type: dto.organizationType,
           settings: dto.organizationSettings || {},
-          ownerId: userId,
+          // ownerId omitted - will be set in step 3 to avoid circular dependency
           updatedAt: new Date(),
-        },
+        } as any, // Type assertion needed due to circular dependency
       });
 
-      // Create owner user
+      // Step 2: Create user with organizationId (organization now exists)
       const user = await tx.users.create({
         data: {
           id: userId,
@@ -124,14 +128,20 @@ export class AuthService implements OnModuleInit {
           passwordHash,
           firstName: dto.firstName,
           lastName: dto.lastName,
-          organizationId: organization.id,
+          organizationId: organizationId,
           hierarchyLevel: HierarchyLevel.OWNER,
           status: UserStatus.ACTIVE,
-          branchId: null, // Owner has organization-wide scope
+          branchId: null,
           departmentId: null,
-          createdById: null, // Owner creates themselves
+          createdById: null,
           updatedAt: new Date(),
         },
+      });
+
+      // Step 3: Update organization to set owner (user now exists)
+      await tx.organizations.update({
+        where: { id: organizationId },
+        data: { ownerId: userId },
       });
 
       return { user, organization };
@@ -190,23 +200,27 @@ export class AuthService implements OnModuleInit {
     }
 
     // Create organization and user in a transaction
+    // Three-step process to handle circular dependency:
+    // 1. Create organization without owner
+    // 2. Create user with organizationId
+    // 3. Update organization to set ownerId
     const result = await this.prisma.$transaction(async (tx) => {
-      // Create user first to get the ID
       const userId = uuidv4();
+      const organizationId = uuidv4();
 
-      // Create organization
+      // Step 1: Create organization without owner
       const organization = await tx.organizations.create({
         data: {
-          id: uuidv4(),
+          id: organizationId,
           name: dto.organizationName,
           type: dto.organizationType,
           settings: dto.organizationSettings || {},
-          ownerId: userId,
+          // ownerId omitted - will be set in step 3 to avoid circular dependency
           updatedAt: new Date(),
-        },
+        } as any, // Type assertion needed due to circular dependency
       });
 
-      // Create owner user
+      // Step 2: Create owner user with organizationId (organization now exists)
       const user = await tx.users.create({
         data: {
           id: userId,
@@ -214,7 +228,7 @@ export class AuthService implements OnModuleInit {
           googleId: googleUserInfo.sub,
           firstName: googleUserInfo.given_name || null,
           lastName: googleUserInfo.family_name || null,
-          organizationId: organization.id,
+          organizationId: organizationId,
           hierarchyLevel: HierarchyLevel.OWNER,
           status: UserStatus.ACTIVE,
           branchId: null, // Owner has organization-wide scope
@@ -222,6 +236,12 @@ export class AuthService implements OnModuleInit {
           createdById: null, // Owner creates themselves
           updatedAt: new Date(),
         },
+      });
+
+      // Step 3: Update organization to set owner (user now exists)
+      await tx.organizations.update({
+        where: { id: organizationId },
+        data: { ownerId: userId },
       });
 
       return { user, organization };
