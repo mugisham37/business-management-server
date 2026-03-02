@@ -1,7 +1,6 @@
 import {
   Catch,
   ArgumentsHost,
-  Logger,
   HttpException,
   UnauthorizedException,
   BadRequestException,
@@ -12,6 +11,7 @@ import { GqlArgumentsHost, GqlExceptionFilter } from '@nestjs/graphql';
 import { GraphQLError } from 'graphql';
 import { AuthorizationException } from '../../../common/exceptions/authorization.exception';
 import { ValidationException } from '../../../common/exceptions/validation.exception';
+import { LoggerService } from '../../../core/logging/logger.service';
 
 /**
  * GraphQL Exception Filter
@@ -26,7 +26,12 @@ import { ValidationException } from '../../../common/exceptions/validation.excep
  */
 @Catch()
 export class GraphQLExceptionFilter implements GqlExceptionFilter {
-  private readonly logger = new Logger(GraphQLExceptionFilter.name);
+  private readonly logger: LoggerService;
+
+  constructor() {
+    this.logger = new LoggerService();
+    this.logger.setContext('GraphQLExceptionFilter');
+  }
 
   catch(exception: any, host: ArgumentsHost) {
     const gqlHost = GqlArgumentsHost.create(host);
@@ -78,18 +83,36 @@ export class GraphQLExceptionFilter implements GqlExceptionFilter {
       this.logger.error(
         `Critical GraphQL Error: ${exception.message}`,
         exception.stack,
-        JSON.stringify(errorContext),
+        'GraphQLExceptionFilter',
+      );
+      this.logger.logWithMetadata(
+        'error',
+        'Critical GraphQL Error Context',
+        errorContext,
+        'GraphQLExceptionFilter',
       );
     } else if (this.isClientError(exception)) {
       this.logger.warn(
         `Client Error in ${info.fieldName}: ${exception.message}`,
-        JSON.stringify(errorContext),
+        'GraphQLExceptionFilter',
+      );
+      this.logger.logWithMetadata(
+        'warn',
+        'Client Error Context',
+        errorContext,
+        'GraphQLExceptionFilter',
       );
     } else {
       this.logger.error(
         `GraphQL Error in ${info.fieldName}: ${exception.message}`,
         exception.stack,
-        JSON.stringify(errorContext),
+        'GraphQLExceptionFilter',
+      );
+      this.logger.logWithMetadata(
+        'error',
+        'GraphQL Error Context',
+        errorContext,
+        'GraphQLExceptionFilter',
       );
     }
   }

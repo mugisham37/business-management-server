@@ -4,9 +4,22 @@ import helmet from 'helmet';
 import { AppModule } from './app.module';
 import { grpcConfig } from './core/config/grpc.config';
 import { ConnectionHealthService } from './core/database/connection-health.service';
+import { LoggerService } from './core/logging/logger.service';
 
 async function bootstrap() {
-  const app = await NestFactory.create(AppModule);
+  // Create custom logger instance
+  const logger = new LoggerService();
+  logger.setContext('Bootstrap');
+  
+  const app = await NestFactory.create(AppModule, {
+    logger: logger, // Use custom logger for NestJS internal logging
+    bufferLogs: true, // Buffer logs until logger is ready
+  });
+  
+  // Use the custom logger for the application
+  app.useLogger(logger);
+  
+  logger.info('Starting application bootstrap...');
   
   // Security headers using Helmet
   // Requirements: 17.7, 17.9
@@ -35,7 +48,7 @@ async function bootstrap() {
 
   // CORS configuration
   // Requirement: 17.7
-  const corsOrigins = process.env.CORS_ORIGIN?.split(',') || ['http://localhost:3001'];
+  const corsOrigins = process.env.CORS_ORIGIN?.split(',') || ['http://localhost:3000'];
   app.enableCors({
     origin: corsOrigins,
     credentials: true,
@@ -80,21 +93,37 @@ async function bootstrap() {
     }),
   );
   
+  logger.info('Configuring gRPC microservice...');
+  
   // Configure gRPC microservice
   app.connectMicroservice(grpcConfig);
   
   // Start all microservices
   await app.startAllMicroservices();
   
-  // Start HTTP server
-  await app.listen(process.env.PORT ?? 3000);
+  logger.info('gRPC microservice started successfully');
+  
+  // Start HTTP server - strictly on port 3001
+  const port = 3001;
+  if (process.env.PORT && process.env.PORT !== '3001') {
+    throw new Error('Server must run on port 3001 only. No alternative port is allowed.');
+  }
+  
+  await app.listen(port);
   
   // Start database connection health monitoring
   const connectionHealthService = app.get(ConnectionHealthService);
   connectionHealthService.startHealthChecks();
   
-  console.log(`HTTP server running on: http://localhost:${process.env.PORT ?? 3000}`);
-  console.log(`gRPC server running on: ${process.env.GRPC_URL || '0.0.0.0:5000'}`);
-  console.log(`CORS enabled for origins: ${corsOrigins.join(', ')}`);
+  logger.info('='.repeat(60));
+  logger.info(`🚀 HTTP server running on: http://localhost:${port}`);
+  logger.info(`📊 GraphQL server running on: http://localhost:${port}/graphql`);
+  logger.info(`🔌 gRPC server running on: ${process.env.GRPC_URL || '0.0.0.0:5000'}`);
+  logger.info(`🌐 CORS enabled for origins: ${corsOrigins.join(', ')}`);
+  logger.info(`📝 Log Level: ${process.env.LOG_LEVEL || 'info'}`);
+  logger.info(`🔧 Environment: ${process.env.NODE_ENV || 'development'}`);
+  logger.info('='.repeat(60));
+  logger.info('✅ Application is ready to accept requests');
+  logger.info('='.repeat(60));
 }
 bootstrap();
