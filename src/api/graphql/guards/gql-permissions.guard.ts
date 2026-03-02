@@ -2,7 +2,7 @@ import { Injectable, CanActivate, ExecutionContext } from '@nestjs/common';
 import { Reflector } from '@nestjs/core';
 import { GqlExecutionContext } from '@nestjs/graphql';
 import { PERMISSIONS_KEY } from '../../../core/auth/decorators/permissions.decorator';
-import { UserContext } from '../../../core/auth/interfaces';
+import type { UserContext } from '../../../core/auth/interfaces/user-context.interface';
 
 /**
  * GraphQL Permissions Guard

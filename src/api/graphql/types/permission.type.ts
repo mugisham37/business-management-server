@@ -7,10 +7,10 @@ import { GraphQLJSON } from 'graphql-type-json';
 @InputType()
 export class ModulePermissionInput {
   @Field(() => String, { description: 'Module name (e.g., INVENTORY, SALES)' })
-  module: string;
+  module!: string;
 
   @Field(() => [String], { description: 'Array of actions (e.g., CREATE, READ, UPDATE)' })
-  actions: string[];
+  actions!: string[];
 }
 
 /**
@@ -19,10 +19,10 @@ export class ModulePermissionInput {
 @InputType()
 export class GrantPermissionsInput {
   @Field(() => String, { description: 'User ID to grant permissions to' })
-  userId: string;
+  userId!: string;
 
   @Field(() => [ModulePermissionInput], { description: 'Permissions to grant' })
-  permissions: ModulePermissionInput[];
+  permissions!: ModulePermissionInput[];
 }
 
 /**
@@ -31,10 +31,10 @@ export class GrantPermissionsInput {
 @InputType()
 export class RevokePermissionsInput {
   @Field(() => String, { description: 'User ID to revoke permissions from' })
-  userId: string;
+  userId!: string;
 
   @Field(() => [String], { description: 'Module names to revoke' })
-  modules: string[];
+  modules!: string[];
 }
 
 /**
@@ -43,10 +43,10 @@ export class RevokePermissionsInput {
 @ObjectType()
 export class ModulePermissionType {
   @Field(() => String, { description: 'Module name' })
-  module: string;
+  module!: string;
 
   @Field(() => [String], { description: 'Array of actions' })
-  actions: string[];
+  actions!: string[];
 }
 
 /**
@@ -55,13 +55,13 @@ export class ModulePermissionType {
 @ObjectType()
 export class UserPermissionsResponse {
   @Field(() => String, { description: 'User ID' })
-  userId: string;
+  userId!: string;
 
   @Field(() => [ModulePermissionType], { description: 'User permissions by module' })
-  permissions: ModulePermissionType[];
+  permissions!: ModulePermissionType[];
 
   @Field(() => String, { description: 'Permission fingerprint hash' })
-  fingerprint: string;
+  fingerprint!: string;
 }
 
 /**
@@ -70,22 +70,22 @@ export class UserPermissionsResponse {
 @ObjectType()
 export class PermissionSnapshotType {
   @Field(() => String, { description: 'Snapshot ID' })
-  id: string;
+  id!: string;
 
   @Field(() => String, { description: 'User ID' })
-  userId: string;
+  userId!: string;
 
   @Field(() => GraphQLJSON, { description: 'Snapshot data (permissions at time of snapshot)' })
-  snapshotData: any;
+  snapshotData!: any;
 
   @Field(() => String, { description: 'Permission fingerprint hash' })
-  fingerprintHash: string;
+  fingerprintHash!: string;
 
   @Field(() => String, { description: 'Reason for snapshot (PERMISSION_GRANT, PERMISSION_REVOKE, etc.)' })
-  reason: string;
+  reason!: string;
 
   @Field(() => Date, { description: 'Snapshot creation timestamp' })
-  createdAt: Date;
+  createdAt!: Date;
 }
 
 /**
@@ -94,11 +94,11 @@ export class PermissionSnapshotType {
 @ObjectType()
 export class PermissionHistoryResponse {
   @Field(() => String, { description: 'User ID' })
-  userId: string;
+  userId!: string;
 
   @Field(() => [PermissionSnapshotType], { description: 'Permission snapshots ordered by date' })
-  snapshots: PermissionSnapshotType[];
+  snapshots!: PermissionSnapshotType[];
 
   @Field(() => Number, { description: 'Total number of snapshots' })
-  total: number;
+  total!: number;
 }

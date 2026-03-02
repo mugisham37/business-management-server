@@ -4,13 +4,14 @@ import {
   Logger,
   HttpException,
   UnauthorizedException,
-  ForbiddenException,
   BadRequestException,
   NotFoundException,
   ConflictException,
 } from '@nestjs/common';
 import { GqlArgumentsHost, GqlExceptionFilter } from '@nestjs/graphql';
 import { GraphQLError } from 'graphql';
+import { AuthorizationException } from '../../../common/exceptions/authorization.exception';
+import { ValidationException } from '../../../common/exceptions/validation.exception';
 
 /**
  * GraphQL Exception Filter
@@ -102,10 +103,10 @@ export class GraphQLExceptionFilter implements GqlExceptionFilter {
     if (exception instanceof UnauthorizedException) {
       return 'UNAUTHENTICATED';
     }
-    if (exception instanceof ForbiddenException) {
+    if (exception instanceof AuthorizationException) {
       return 'FORBIDDEN';
     }
-    if (exception instanceof BadRequestException) {
+    if (exception instanceof ValidationException || exception instanceof BadRequestException) {
       return 'BAD_USER_INPUT';
     }
     if (exception instanceof NotFoundException) {
@@ -165,9 +166,8 @@ export class GraphQLExceptionFilter implements GqlExceptionFilter {
         return response;
       }
       if (typeof response === 'object' && 'message' in response) {
-        return Array.isArray(response.message)
-          ? response.message.join(', ')
-          : response.message;
+        const msg = (response as any).message;
+        return Array.isArray(msg) ? msg.join(', ') : String(msg);
       }
     }
 

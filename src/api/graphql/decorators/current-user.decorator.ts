@@ -1,6 +1,6 @@
 import { createParamDecorator, ExecutionContext } from '@nestjs/common';
 import { GqlExecutionContext } from '@nestjs/graphql';
-import { UserContext } from '../../../core/auth/interfaces';
+import type { UserContext } from '../../../core/auth/interfaces/user-context.interface';
 
 /**
  * GraphQL CurrentUser Decorator

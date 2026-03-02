@@ -7,15 +7,26 @@ import { BadRequestException } from '@nestjs/common';
  */
 
 /**
+ * Base validation exception
+ */
+export class ValidationException extends BadRequestException {
+  public readonly field?: string;
+
+  constructor(message: string, field?: string) {
+    super(message);
+    this.field = field;
+    this.name = 'ValidationException';
+  }
+}
+
+/**
  * Field validation exception
  */
-export class FieldValidationException extends BadRequestException {
-  public readonly field: string;
+export class FieldValidationException extends ValidationException {
   public readonly validationErrors: string[];
 
   constructor(field: string, errors: string[]) {
-    super(`Validation failed for field '${field}': ${errors.join(', ')}`);
-    this.field = field;
+    super(`Validation failed for field '${field}': ${errors.join(', ')}`, field);
     this.validationErrors = errors;
     this.name = 'FieldValidationException';
   }
@@ -69,12 +80,12 @@ export class InvalidCodeFormatException extends FieldValidationException {
 /**
  * Duplicate code exception
  */
-export class DuplicateCodeException extends BadRequestException {
+export class DuplicateCodeException extends ValidationException {
   public readonly code: string;
   public readonly resourceType: string;
 
   constructor(resourceType: string, code: string) {
-    super(`${resourceType} with code '${code}' already exists`);
+    super(`${resourceType} with code '${code}' already exists`, 'code');
     this.code = code;
     this.resourceType = resourceType;
     this.name = 'DuplicateCodeException';

@@ -5,7 +5,6 @@ import {
   CallHandler,
   Logger,
   UnauthorizedException,
-  ForbiddenException,
   NotFoundException,
   BadRequestException,
   ConflictException,
@@ -14,6 +13,8 @@ import { Observable, throwError } from 'rxjs';
 import { catchError } from 'rxjs/operators';
 import { RpcException } from '@nestjs/microservices';
 import { GrpcError } from '../interfaces';
+import { AuthorizationException } from '../../../common/exceptions/authorization.exception';
+import { ValidationException } from '../../../common/exceptions/validation.exception';
 
 /**
  * gRPC Error Formatting Interceptor
@@ -120,7 +121,7 @@ export class GrpcErrorInterceptor implements NestInterceptor {
       };
     }
 
-    if (error instanceof ForbiddenException) {
+    if (error instanceof AuthorizationException) {
       return {
         code: 'PERMISSION_DENIED',
         message: this.sanitizeMessage(error.message || 'Permission denied'),
@@ -139,13 +140,22 @@ export class GrpcErrorInterceptor implements NestInterceptor {
       };
     }
 
-    if (error instanceof BadRequestException) {
+    if (error instanceof ValidationException) {
       return {
         code: 'INVALID_ARGUMENT',
         message: this.sanitizeMessage(error.message || 'Invalid request'),
         timestamp,
         correlationId,
         details: error.field ? { field: error.field } : undefined,
+      };
+    }
+
+    if (error instanceof BadRequestException) {
+      return {
+        code: 'INVALID_ARGUMENT',
+        message: this.sanitizeMessage(error.message || 'Invalid request'),
+        timestamp,
+        correlationId,
       };
     }
 

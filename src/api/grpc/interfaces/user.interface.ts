@@ -17,9 +17,11 @@ export interface GetUserRequest {
 
 export interface GetUserByEmailRequest {
   email: string;
+  organization_id: string;
 }
 
 export interface ListUsersRequest {
+  organization_id: string;
   pagination?: {
     page: number;
     limit: number;
@@ -42,10 +44,13 @@ export interface ListUsersResponse {
 
 export interface CreateUserRequest {
   email: string;
-  password: string;
   first_name: string;
   last_name: string;
-  tenant_id: string;
+  organization_id: string;
+  creator_id: string;
+  hierarchy_level?: string;
+  branch_id?: string;
+  department_id?: string;
 }
 
 export interface UpdateUserRequest {
