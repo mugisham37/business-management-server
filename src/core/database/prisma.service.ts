@@ -36,6 +36,11 @@ export class PrismaService extends PrismaClient implements OnModuleInit, OnModul
         { emit: 'event', level: 'warn' },
       ],
       errorFormat: 'pretty',
+      datasources: {
+        db: {
+          url: process.env.DATABASE_URL,
+        },
+      },
     });
 
     this.logger = loggerService;
@@ -81,6 +86,10 @@ export class PrismaService extends PrismaClient implements OnModuleInit, OnModul
     try {
       await this.$connect();
       this.logger.info('Database connection established');
+      
+      // Test connection with a simple query
+      await this.$queryRaw`SELECT 1`;
+      this.logger.info('Database connection verified');
     } catch (error) {
       const errorStack = error instanceof Error ? error.stack : String(error);
       this.logger.error('Failed to connect to database', errorStack);

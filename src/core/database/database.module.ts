@@ -1,5 +1,6 @@
 import { Global, Module } from '@nestjs/common';
 import { PrismaService } from './prisma.service';
+import { ConnectionHealthService } from './connection-health.service';
 
 /**
  * Database Module
@@ -9,7 +10,7 @@ import { PrismaService } from './prisma.service';
  */
 @Global()
 @Module({
-  providers: [PrismaService],
-  exports: [PrismaService],
+  providers: [PrismaService, ConnectionHealthService],
+  exports: [PrismaService, ConnectionHealthService],
 })
 export class DatabaseModule {}

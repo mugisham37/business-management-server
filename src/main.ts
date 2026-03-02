@@ -3,6 +3,7 @@ import { ValidationPipe } from '@nestjs/common';
 import helmet from 'helmet';
 import { AppModule } from './app.module';
 import { grpcConfig } from './core/config/grpc.config';
+import { ConnectionHealthService } from './core/database/connection-health.service';
 
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
@@ -87,6 +88,10 @@ async function bootstrap() {
   
   // Start HTTP server
   await app.listen(process.env.PORT ?? 3000);
+  
+  // Start database connection health monitoring
+  const connectionHealthService = app.get(ConnectionHealthService);
+  connectionHealthService.startHealthChecks();
   
   console.log(`HTTP server running on: http://localhost:${process.env.PORT ?? 3000}`);
   console.log(`gRPC server running on: ${process.env.GRPC_URL || '0.0.0.0:5000'}`);

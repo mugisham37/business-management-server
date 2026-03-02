@@ -1,5 +1,13 @@
 import { ObjectType, Field, InputType, Int } from '@nestjs/graphql';
 import { HierarchyLevel } from '@prisma/client';
+import {
+  IsString,
+  IsEmail,
+  IsEnum,
+  IsOptional,
+  MinLength,
+  Matches,
+} from 'class-validator';
 
 @ObjectType()
 export class AuthUserType {
@@ -40,24 +48,36 @@ export class AuthResponse {
 @InputType()
 export class RegisterOwnerInput {
   @Field()
+  @IsEmail()
   email!: string;
 
   @Field()
+  @IsString()
+  @MinLength(8, { message: 'Password must be at least 8 characters long' })
+  @Matches(/^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]+$/, {
+    message:
+      'Password must contain at least one uppercase letter, one lowercase letter, one number, and one special character',
+  })
   password!: string;
 
   @Field()
+  @IsString()
   firstName!: string;
 
   @Field()
+  @IsString()
   lastName!: string;
 
   @Field()
+  @IsString()
   organizationName!: string;
 
   @Field()
+  @IsString()
   organizationType!: string;
 
   @Field(() => String, { nullable: true })
+  @IsOptional()
   organizationSettings?: string;
 }
 
