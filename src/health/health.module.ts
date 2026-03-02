@@ -14,5 +14,6 @@ import { CacheModule } from '../core/cache/cache.module';
   ],
   controllers: [HealthController],
   providers: [DatabaseHealthIndicator, RedisHealthIndicator],
+  exports: [TerminusModule, DatabaseHealthIndicator, RedisHealthIndicator],
 })
 export class HealthModule {}

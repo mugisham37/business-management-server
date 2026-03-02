@@ -15,14 +15,18 @@ export class SanitizationMiddleware implements NestMiddleware {
       req.body = this.sanitizeObject(req.body);
     }
 
-    // Sanitize query parameters
-    if (req.query) {
-      req.query = this.sanitizeObject(req.query);
+    // Sanitize query parameters (Express 5 compatible)
+    if (req.query && Object.keys(req.query).length > 0) {
+      const sanitizedQuery = this.sanitizeObject(req.query);
+      Object.keys(req.query).forEach(key => delete (req.query as any)[key]);
+      Object.assign(req.query, sanitizedQuery);
     }
 
-    // Sanitize URL parameters
-    if (req.params) {
-      req.params = this.sanitizeObject(req.params);
+    // Sanitize URL parameters (Express 5 compatible)
+    if (req.params && Object.keys(req.params).length > 0) {
+      const sanitizedParams = this.sanitizeObject(req.params);
+      Object.keys(req.params).forEach(key => delete (req.params as any)[key]);
+      Object.assign(req.params, sanitizedParams);
     }
 
     next();
@@ -43,7 +47,7 @@ export class SanitizationMiddleware implements NestMiddleware {
     if (typeof obj === 'object') {
       const sanitized: any = {};
       for (const key in obj) {
-        if (obj.hasOwnProperty(key)) {
+        if (Object.prototype.hasOwnProperty.call(obj, key)) {
           sanitized[key] = this.sanitizeObject(obj[key]);
         }
       }

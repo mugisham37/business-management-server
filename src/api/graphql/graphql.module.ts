@@ -3,7 +3,6 @@ import { GraphQLModule as NestGraphQLModule } from '@nestjs/graphql';
 import { ApolloDriver, ApolloDriverConfig } from '@nestjs/apollo';
 import { join } from 'path';
 import { DatabaseModule } from '../../core/database/database.module';
-import { CacheModule } from '../../core/cache/cache.module';
 import { HealthModule } from '../../health/health.module';
 import { UserModule } from '../../modules/user/user.module';
 import { AuthModule } from '../../modules/auth/auth.module';
@@ -40,7 +39,6 @@ import { AuditResolver } from './resolvers/audit.resolver';
       context: ({ req }: { req: any }) => ({ req }),
     }),
     DatabaseModule,
-    CacheModule,
     HealthModule,
     UserModule,
     AuthModule,

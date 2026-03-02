@@ -35,6 +35,7 @@
   },
   "dependencies": {
     "@apollo/server": "^5.4.0",
+    "@as-integrations/express5": "^1.1.2",
     "@bull-board/api": "^6.20.3",
     "@bull-board/express": "^6.20.3",
     "@grpc/grpc-js": "^1.14.3",

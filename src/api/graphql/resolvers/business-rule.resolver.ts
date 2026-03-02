@@ -123,7 +123,7 @@ export class BusinessRuleResolver extends BaseResolver {
   @UseGuards(GqlAuthGuard)
   @Query(() => BusinessRulesListResponse, { name: 'getBusinessRules' })
   async getRules(
-    @Args('transactionType', { nullable: true }) transactionType: string | null,
+    @Args('transactionType', { type: () => String, nullable: true }) transactionType: string | null,
     @GqlCurrentUser() currentUser: UserContext,
   ): Promise<BusinessRulesListResponse> {
     this.logOperation('getBusinessRules', {

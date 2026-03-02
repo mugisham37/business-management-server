@@ -1,0 +1,442 @@
+# ------------------------------------------------------
+# THIS FILE WAS AUTOMATICALLY GENERATED (DO NOT MODIFY)
+# ------------------------------------------------------
+
+input AuditFiltersInput {
+  action: String
+  endDate: DateTime
+  limit: Int = 100
+  offset: Int = 0
+  resourceType: String
+  startDate: DateTime
+}
+
+type AuditLogType {
+  action: String!
+  createdAt: DateTime!
+  hierarchyLevel: String
+  id: String!
+  ipAddress: String
+  metadata: JSON
+  newValue: JSON
+  oldValue: JSON
+  organizationId: String
+  resourceId: String
+  resourceType: String!
+  result: String!
+  userAgent: String
+  userId: String
+}
+
+type AuditLogsResponse {
+  logs: [AuditLogType!]!
+  total: Int!
+}
+
+type AuthResponse {
+  accessToken: String!
+  expiresIn: Int!
+  refreshToken: String!
+  user: AuthUserType!
+}
+
+type AuthUserType {
+  email: String!
+  firstName: String
+  hierarchyLevel: String!
+  id: String!
+  lastName: String
+  organizationId: String!
+}
+
+type BranchType {
+  address: String
+  code: String!
+  createdAt: DateTime!
+  id: String!
+  managerId: String
+  name: String!
+  organizationId: String!
+  updatedAt: DateTime!
+}
+
+type BranchesListResponse {
+  branches: [BranchType!]!
+  total: Float!
+}
+
+type BusinessRuleType {
+  appliesToLevel: String!
+  approverLevel: String!
+  basedOn: String!
+  createdAt: DateTime!
+  id: String!
+  isActive: Boolean!
+  organizationId: String!
+  priority: Int!
+  ruleName: String!
+  thresholdValue: Float!
+  transactionType: String!
+  updatedAt: DateTime!
+}
+
+type BusinessRulesListResponse {
+  rules: [BusinessRuleType!]!
+  total: Float!
+}
+
+input ChangePasswordInput {
+  currentPassword: String!
+  newPassword: String!
+}
+
+input CreateBranchInput {
+  address: String
+  code: String!
+  name: String!
+  organizationId: String!
+}
+
+input CreateBusinessRuleInput {
+  appliesToLevel: String!
+  approverLevel: String!
+  basedOn: String!
+  priority: Int!
+  ruleName: String!
+  thresholdValue: Float!
+  transactionType: String!
+}
+
+input CreateDepartmentInput {
+  branchId: String
+  code: String!
+  name: String!
+  organizationId: String!
+}
+
+input CreateManagerInput {
+  branchId: String
+  departmentId: String
+  email: String!
+  firstName: String!
+  lastName: String!
+  organizationId: String!
+  staffProfile: StaffProfileInput!
+}
+
+type CreateUserResponse {
+  credentialType: String!
+  temporaryCredential: String!
+  user: UserManagementType!
+}
+
+input CreateWorkerInput {
+  email: String!
+  firstName: String!
+  lastName: String!
+  organizationId: String!
+  staffProfile: StaffProfileInput!
+  usePIN: Boolean = false
+}
+
+"""
+A date-time string at UTC, such as 2019-12-03T09:54:33Z, compliant with the date-time format.
+"""
+scalar DateTime
+
+type DepartmentType {
+  branchId: String
+  code: String!
+  createdAt: DateTime!
+  id: String!
+  managerId: String
+  name: String!
+  organizationId: String!
+  updatedAt: DateTime!
+}
+
+type DepartmentsListResponse {
+  departments: [DepartmentType!]!
+  total: Float!
+}
+
+input GrantPermissionsInput {
+  """Permissions to grant"""
+  permissions: [ModulePermissionInput!]!
+
+  """User ID to grant permissions to"""
+  userId: String!
+}
+
+type HealthCheckResponse {
+  cache: ServiceHealth!
+  database: ServiceHealth!
+  queue: ServiceHealth!
+  status: String!
+  timestamp: String!
+}
+
+"""
+The `JSON` scalar type represents JSON values as specified by [ECMA-404](http://www.ecma-international.org/publications/files/ECMA-ST/ECMA-404.pdf).
+"""
+scalar JSON
+
+input LoginInput {
+  email: String!
+  organizationId: String!
+  password: String!
+}
+
+input LoginWithPinInput {
+  email: String!
+  organizationId: String!
+  pin: String!
+}
+
+input ModulePermissionInput {
+  """Array of actions (e.g., CREATE, READ, UPDATE)"""
+  actions: [String!]!
+
+  """Module name (e.g., INVENTORY, SALES)"""
+  module: String!
+}
+
+type ModulePermissionType {
+  """Array of actions"""
+  actions: [String!]!
+
+  """Module name"""
+  module: String!
+}
+
+type Mutation {
+  assignBranchManager(branchId: String!, managerId: String!): Boolean!
+  assignDepartmentManager(departmentId: String!, managerId: String!): Boolean!
+  changePassword(input: ChangePasswordInput!): Boolean!
+  createBranch(input: CreateBranchInput!): BranchType!
+  createBusinessRule(input: CreateBusinessRuleInput!): BusinessRuleType!
+  createDepartment(input: CreateDepartmentInput!): DepartmentType!
+  createManager(input: CreateManagerInput!): CreateUserResponse!
+  createWorker(input: CreateWorkerInput!): CreateUserResponse!
+  grantPermissions(input: GrantPermissionsInput!): Boolean!
+  login(input: LoginInput!): AuthResponse!
+  loginWithPin(input: LoginWithPinInput!): AuthResponse!
+  logout: Boolean!
+  refreshToken(input: RefreshTokenInput!): AuthResponse!
+  registerOwner(input: RegisterOwnerInput!): AuthResponse!
+  revokeAllSessions: Boolean!
+  revokePermissions(input: RevokePermissionsInput!): Boolean!
+  revokeSession(input: RevokeSessionInput!): Boolean!
+  updateBranch(branchId: String!, input: UpdateBranchInput!): BranchType!
+  updateBusinessRule(input: UpdateBusinessRuleInput!, ruleId: String!): BusinessRuleType!
+  updateDepartment(departmentId: String!, input: UpdateDepartmentInput!): DepartmentType!
+  updateOrganization(input: UpdateOrganizationInput!): OrganizationType!
+  updateUser(input: UpdateUserManagementInput!, userId: String!): UserManagementType!
+}
+
+type OrganizationType {
+  createdAt: DateTime!
+  id: String!
+  name: String!
+  ownerId: String
+  status: String!
+  type: String!
+  updatedAt: DateTime!
+}
+
+type PageInfo {
+  currentPage: Int!
+  hasNextPage: Boolean!
+  hasPreviousPage: Boolean!
+  pageSize: Int!
+  totalCount: Int!
+  totalPages: Int!
+}
+
+type PermissionHistoryResponse {
+  """Permission snapshots ordered by date"""
+  snapshots: [PermissionSnapshotType!]!
+
+  """Total number of snapshots"""
+  total: Float!
+
+  """User ID"""
+  userId: String!
+}
+
+type PermissionSnapshotType {
+  """Snapshot creation timestamp"""
+  createdAt: DateTime!
+
+  """Permission fingerprint hash"""
+  fingerprintHash: String!
+
+  """Snapshot ID"""
+  id: String!
+
+  """Reason for snapshot (PERMISSION_GRANT, PERMISSION_REVOKE, etc.)"""
+  reason: String!
+
+  """Snapshot data (permissions at time of snapshot)"""
+  snapshotData: JSON!
+
+  """User ID"""
+  userId: String!
+}
+
+type Query {
+  getActiveSessions: [SessionType!]!
+  getBranches: BranchesListResponse!
+  getBusinessRules(transactionType: String): BusinessRulesListResponse!
+  getDepartments: DepartmentsListResponse!
+  getOrganization: OrganizationType
+  getOrganizationAuditLogs(filters: AuditFiltersInput, organizationId: String!): AuditLogsResponse!
+  getPermissionHistory(userId: String!): PermissionHistoryResponse!
+  getResourceAuditLogs(resourceId: String!, resourceType: String!): AuditLogsResponse!
+  getUser(userId: String!): UserManagementType
+  getUserAuditLogs(filters: AuditFiltersInput, userId: String!): AuditLogsResponse!
+  getUserPermissions(userId: String!): UserPermissionsResponse!
+  getUsers: UsersListResponse!
+
+  """Check health status of all services"""
+  health: HealthCheckResponse!
+}
+
+input RefreshTokenInput {
+  refreshToken: String!
+}
+
+input RegisterOwnerInput {
+  email: String!
+  firstName: String!
+  lastName: String!
+  organizationName: String!
+  organizationSettings: String
+  organizationType: String!
+  password: String!
+}
+
+input RevokePermissionsInput {
+  """Module names to revoke"""
+  modules: [String!]!
+
+  """User ID to revoke permissions from"""
+  userId: String!
+}
+
+input RevokeSessionInput {
+  sessionId: String!
+}
+
+type ServiceHealth {
+  message: String
+  status: String!
+}
+
+type SessionType {
+  createdAt: DateTime!
+  expiresAt: DateTime!
+  id: String!
+  ipAddress: String!
+  userAgent: String!
+}
+
+input StaffProfileInput {
+  employeeCode: String
+  fullName: String!
+  hireDate: DateTime
+  positionTitle: String
+}
+
+type StaffProfileType {
+  createdAt: DateTime!
+  employeeCode: String
+  fullName: String!
+  hireDate: DateTime
+  id: ID!
+  positionTitle: String
+  reportsToUserId: String
+  updatedAt: DateTime!
+  userId: String!
+}
+
+input UpdateBranchInput {
+  address: String
+  code: String
+  name: String
+}
+
+input UpdateBusinessRuleInput {
+  appliesToLevel: String
+  approverLevel: String
+  basedOn: String
+  isActive: Boolean
+  priority: Int
+  ruleName: String
+  thresholdValue: Float
+  transactionType: String
+}
+
+input UpdateDepartmentInput {
+  branchId: String
+  code: String
+  name: String
+}
+
+input UpdateOrganizationInput {
+  name: String
+  status: String
+  type: String
+}
+
+input UpdateUserManagementInput {
+  branchId: String
+  departmentId: String
+  email: String
+  firstName: String
+  lastName: String
+  status: String
+}
+
+type UserManagementType {
+  branchId: String
+  createdAt: DateTime!
+  createdById: String
+  departmentId: String
+  email: String!
+  firstName: String!
+  hierarchyLevel: String!
+  id: ID!
+  lastName: String!
+  organizationId: String!
+  staffProfile: StaffProfileType
+  status: String!
+  updatedAt: DateTime!
+}
+
+type UserPermissionsResponse {
+  """Permission fingerprint hash"""
+  fingerprint: String!
+
+  """User permissions by module"""
+  permissions: [ModulePermissionType!]!
+
+  """User ID"""
+  userId: String!
+}
+
+type UserType {
+  createdAt: DateTime!
+  email: String!
+  firstName: String!
+  id: ID!
+  isActive: Boolean!
+  lastName: String!
+  tenantId: String!
+  updatedAt: DateTime!
+}
+
+type UsersListResponse {
+  total: Float!
+  users: [UserManagementType!]!
+}

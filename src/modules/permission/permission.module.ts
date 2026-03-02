@@ -2,7 +2,6 @@ import { Module } from '@nestjs/common';
 import { PermissionCacheService } from './permission-cache.service';
 import { DelegationValidatorService } from './delegation-validator.service';
 import { PermissionService } from './permission.service';
-import { CacheModule } from '../../core/cache/cache.module';
 import { DatabaseModule } from '../../core/database/database.module';
 import { LoggingModule } from '../../core/logging/logging.module';
 
@@ -11,7 +10,6 @@ import { LoggingModule } from '../../core/logging/logging.module';
  */
 @Module({
   imports: [
-    CacheModule,
     DatabaseModule,
     LoggingModule,
   ],
