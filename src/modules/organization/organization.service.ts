@@ -92,7 +92,7 @@ export class OrganizationService {
         },
         fingerprintHash: this.calculatePermissionFingerprint(allPermissions),
         reason: 'OWNER_INITIALIZATION',
-        createdAt: new Date(),
+        // createdAt has @default(now()) in schema, no need to specify
       },
     });
   }

@@ -9,12 +9,27 @@ import { Prisma } from '@prisma/client';
  * - Sets createdAt and updatedAt on create operations
  * - Updates updatedAt on update operations
  * - Preserves explicit timestamp values if provided
+ * - Skips tables that don't have createdAt/updatedAt fields
  * 
  * Note: Prisma already handles this via @default(now()) and @updatedAt decorators,
  * but this middleware provides additional control and consistency.
  */
 export function timestampMiddleware(): Prisma.Middleware {
+  // Tables that don't have createdAt/updatedAt fields
+  const excludedModels = new Set([
+    'permission_matrices',  // Uses grantedAt instead
+    'permission_snapshots', // Only has createdAt, no updatedAt
+    'role_permissions',     // Uses grantedAt instead
+    'user_roles',          // Uses assignedAt instead
+    'sessions',            // Has its own timestamp logic
+  ]);
+
   return async (params, next) => {
+    // Skip timestamp logic for excluded models
+    if (excludedModels.has(params.model || '')) {
+      return next(params);
+    }
+
     const now = new Date();
 
     // Handle CREATE operations
