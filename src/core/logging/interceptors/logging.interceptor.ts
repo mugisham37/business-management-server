@@ -22,7 +22,7 @@ export class LoggingInterceptor implements NestInterceptor {
 
     const { method, url, ip, headers } = request;
     const userAgent = headers['user-agent'] || '';
-    const correlationId = request.correlationId;
+    const correlationId = (request as any).correlationId || 'N/A';
 
     const startTime = Date.now();
 

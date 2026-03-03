@@ -310,40 +310,69 @@ export class AuthService implements OnModuleInit {
    * @returns Authentication response with tokens
    */
   async loginWithPassword(
-    email: string,
-    password: string,
-    organizationId: string,
-    context: RequestContext,
-  ): Promise<AuthResponse> {
-    this.logger.debug(`Login attempt for email: ${email}`);
+      email: string | undefined,
+      organizationName: string | undefined,
+      password: string,
+      organizationId: string | undefined,
+      context: RequestContext,
+    ): Promise<AuthResponse> {
+      this.logger.debug(`Login attempt for email: ${email}, organizationName: ${organizationName}`);
 
-    // Validate user credentials and account status
-    const user = await this.validateUser(email, password, organizationId);
-
-    if (!user) {
-      // Increment failed attempts for the user if found
-      const existingUser = await this.prisma.users.findUnique({
-        where: {
-          email_organizationId: {
-            email,
-            organizationId,
-          },
-        },
-      });
-
-      if (existingUser) {
-        await this.handleFailedLogin(existingUser.id);
+      // Validate that at least email or organizationName is provided
+      if (!email && !organizationName) {
+        throw new UnauthorizedException('Email or organization name is required');
       }
 
-      throw new UnauthorizedException('Invalid credentials');
+      // Validate user credentials and account status
+      const user = await this.validateUser(email, organizationName, password, organizationId);
+
+      if (!user) {
+        // Increment failed attempts for the user if found
+        if (email && organizationId) {
+          const existingUser = await this.prisma.users.findUnique({
+            where: {
+              email_organizationId: {
+                email,
+                organizationId,
+              },
+            },
+          });
+
+          if (existingUser) {
+            await this.handleFailedLogin(existingUser.id);
+          }
+        } else if (email) {
+          // Find user by email only
+          const existingUser = await this.prisma.users.findFirst({
+            where: { email },
+          });
+
+          if (existingUser) {
+            await this.handleFailedLogin(existingUser.id);
+          }
+        } else if (organizationName) {
+          // Find organization owner by organization name
+          const organization = await this.prisma.organizations.findUnique({
+            where: { name: organizationName },
+            include: {
+              users_organizations_ownerIdTousers: true,
+            },
+          });
+
+          if (organization?.users_organizations_ownerIdTousers) {
+            await this.handleFailedLogin(organization.users_organizations_ownerIdTousers.id);
+          }
+        }
+
+        throw new UnauthorizedException('Invalid credentials');
+      }
+
+      // Reset failed attempts on successful login
+      await this.resetFailedAttempts(user.id);
+
+      // Generate tokens and create session
+      return this.createAuthResponse(user, context);
     }
-
-    // Reset failed attempts on successful login
-    await this.resetFailedAttempts(user.id);
-
-    // Generate tokens and create session
-    return this.createAuthResponse(user, context);
-  }
 
   /**
    * Login with PIN for workers
@@ -422,52 +451,83 @@ export class AuthService implements OnModuleInit {
    * @returns User if valid, null otherwise
    */
   async validateUser(
-    email: string,
-    password: string,
-    organizationId: string,
-  ): Promise<any | null> {
-    this.logger.debug(`Validating user: ${email}`);
+      email: string | undefined,
+      organizationName: string | undefined,
+      password: string,
+      organizationId: string | undefined,
+    ): Promise<any | null> {
+      this.logger.debug(`Validating user: ${email || organizationName}`);
 
-    // Find user by email and organization
-    const user = await this.prisma.users.findUnique({
-      where: {
-        email_organizationId: {
-          email,
-          organizationId,
-        },
-      },
-    });
+      let user;
 
-    if (!user) {
-      this.logger.debug(`User not found: ${email}`);
-      return null;
+      if (organizationName) {
+        // Find organization by name
+        const organization = await this.prisma.organizations.findUnique({
+          where: { name: organizationName },
+          include: {
+            users_organizations_ownerIdTousers: true,
+          },
+        });
+
+        if (!organization) {
+          this.logger.debug(`Organization not found: ${organizationName}`);
+          return null;
+        }
+
+        // Get the owner user
+        user = organization.users_organizations_ownerIdTousers;
+
+        if (!user) {
+          this.logger.debug(`Organization owner not found for: ${organizationName}`);
+          return null;
+        }
+      } else if (email && organizationId) {
+        // Find user by email and organization
+        user = await this.prisma.users.findUnique({
+          where: {
+            email_organizationId: {
+              email,
+              organizationId,
+            },
+          },
+        });
+      } else if (email) {
+        // Find user by email only (first match)
+        user = await this.prisma.users.findFirst({
+          where: { email },
+        });
+      }
+
+      if (!user) {
+        this.logger.debug(`User not found: ${email || organizationName}`);
+        return null;
+      }
+
+      // Check if password is set
+      if (!user.passwordHash) {
+        this.logger.warn(`User ${user.id} has no password set`);
+        return null;
+      }
+
+      // Check account status
+      try {
+        await this.checkAccountStatus(user);
+      } catch (error) {
+        this.logger.debug(`Account status check failed for user ${user.id}`);
+        throw error;
+      }
+
+      // Validate password
+      const isPasswordValid = await bcrypt.compare(password, user.passwordHash);
+
+      if (!isPasswordValid) {
+        this.logger.debug(`Invalid password for user: ${email || organizationName}`);
+        return null;
+      }
+
+      this.logger.debug(`User validated successfully: ${email || organizationName}`);
+      return user;
     }
-
-    // Check if password is set
-    if (!user.passwordHash) {
-      this.logger.warn(`User ${user.id} has no password set`);
-      return null;
-    }
-
-    // Check account status
-    try {
-      await this.checkAccountStatus(user);
-    } catch (error) {
-      this.logger.debug(`Account status check failed for user ${user.id}`);
-      throw error;
-    }
-
-    // Validate password
-    const isPasswordValid = await bcrypt.compare(password, user.passwordHash);
-
-    if (!isPasswordValid) {
-      this.logger.debug(`Invalid password for user: ${email}`);
-      return null;
-    }
-
-    this.logger.debug(`User validated successfully: ${email}`);
-    return user;
-  }
 
   /**
    * Handle failed login attempts and account locking

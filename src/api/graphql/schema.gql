@@ -182,8 +182,9 @@ The `JSON` scalar type represents JSON values as specified by [ECMA-404](http://
 scalar JSON
 
 input LoginInput {
-  email: String!
-  organizationId: String!
+  email: String
+  organizationId: String
+  organizationName: String
   password: String!
 }
 

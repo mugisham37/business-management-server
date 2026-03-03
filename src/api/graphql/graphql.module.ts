@@ -30,9 +30,9 @@ import { AuditResolver } from './resolvers/audit.resolver';
       introspection: true,
       formatError: (error) => {
         return {
-          message: error.message,
-          code: error.extensions?.code || 'INTERNAL_SERVER_ERROR',
-          path: error.path,
+          message: error?.message || 'An error occurred',
+          code: error?.extensions?.code || 'INTERNAL_SERVER_ERROR',
+          path: error?.path || [],
           timestamp: new Date().toISOString(),
         };
       },

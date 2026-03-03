@@ -83,14 +83,24 @@ export class RegisterOwnerInput {
 
 @InputType()
 export class LoginInput {
-  @Field()
-  email!: string;
+  @Field(() => String, { nullable: true })
+  @IsOptional()
+  @IsEmail()
+  email?: string;
+
+  @Field(() => String, { nullable: true })
+  @IsOptional()
+  @IsString()
+  organizationName?: string;
 
   @Field()
+  @IsString()
   password!: string;
 
-  @Field()
-  organizationId!: string;
+  @Field(() => String, { nullable: true })
+  @IsOptional()
+  @IsString()
+  organizationId?: string;
 }
 
 @InputType()

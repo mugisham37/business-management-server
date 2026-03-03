@@ -52,7 +52,7 @@ export class HttpLoggingInterceptor implements NestInterceptor {
 
     const { method, url, ip, headers, body } = request;
     const userAgent = headers['user-agent'] || 'Unknown';
-    const correlationId = request.correlationId || 'N/A';
+    const correlationId = (request as any).correlationId || 'N/A';
     const contentType = headers['content-type'] || 'Unknown';
 
     const startTime = Date.now();
@@ -174,7 +174,7 @@ export class HttpLoggingInterceptor implements NestInterceptor {
     const operationName = info.operation?.name?.value || 'anonymous';
     const fieldName = info.fieldName;
     const parentType = info.parentType?.name || 'unknown';
-    const correlationId = request?.correlationId ?? ctx?.correlationId ?? 'N/A';
+    const correlationId = (request as any)?.correlationId ?? (ctx as any)?.correlationId ?? 'N/A';
     const userId = ctx.req?.user?.userId || 'anonymous';
 
     const startTime = Date.now();

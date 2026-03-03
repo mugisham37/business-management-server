@@ -97,12 +97,13 @@ export class AuthResolver extends BaseResolver {
     @Args('input') input: LoginInput,
     @Context() context: any,
   ): Promise<AuthResponse> {
-    this.logOperation('login', { email: input.email });
+    this.logOperation('login', { email: input.email, organizationName: input.organizationName });
 
     const requestContext = this.extractRequestContext(context);
 
     const result = await this.authService.loginWithPassword(
       input.email,
+      input.organizationName,
       input.password,
       input.organizationId,
       requestContext,

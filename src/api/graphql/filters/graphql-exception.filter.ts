@@ -41,7 +41,7 @@ export class GraphQLExceptionFilter implements GqlExceptionFilter {
     // Extract user context for logging (if available)
     const userId = context?.req?.user?.userId;
     const organizationId = context?.req?.user?.organizationId;
-    const correlationId = context?.correlationId;
+    const correlationId = context?.correlationId || 'unknown';
 
     // Log error with full context (Requirement 19.2, 19.4)
     this.logError(exception, info, userId, organizationId, correlationId);
