@@ -296,6 +296,31 @@ export class GraphQLExceptionFilter implements GqlExceptionFilter {
   }
 
   /**
+   * Extract context from exception
+   */
+  private extractExceptionContext(exception: any): Record<string, any> | undefined {
+    // Check if exception has context property
+    if (exception.context && typeof exception.context === 'object') {
+      return exception.context;
+    }
+
+    // Check if exception response has context
+    if (exception.response?.context && typeof exception.response.context === 'object') {
+      return exception.response.context;
+    }
+
+    // Check if exception has getResponse method (NestJS exceptions)
+    if (typeof exception.getResponse === 'function') {
+      const response = exception.getResponse();
+      if (typeof response === 'object' && response.context) {
+        return response.context;
+      }
+    }
+
+    return undefined;
+  }
+
+  /**
    * Build error extensions with additional context
    * Requirement 15.6, 19.5
    */
@@ -313,6 +338,32 @@ export class GraphQLExceptionFilter implements GqlExceptionFilter {
     // Add correlation ID for tracing
     if (correlationId && correlationId !== 'unknown') {
       extensions.correlationId = correlationId;
+    }
+
+    // Extract and add context from exception
+    const context = this.extractExceptionContext(exception);
+    if (context) {
+      // Add suggestion if available
+      if (context.suggestion) {
+        extensions.suggestion = context.suggestion;
+      }
+
+      // Add action if available
+      if (context.action) {
+        extensions.action = context.action;
+      }
+
+      // Add alternatives if available
+      if (context.alternatives) {
+        extensions.alternatives = context.alternatives;
+      }
+
+      // Add any other context fields
+      Object.keys(context).forEach(key => {
+        if (!['suggestion', 'action', 'alternatives'].includes(key)) {
+          extensions[key] = context[key];
+        }
+      });
     }
 
     // Add original technical message for debugging (sanitized)

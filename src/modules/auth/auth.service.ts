@@ -94,7 +94,14 @@ export class AuthService implements OnModuleInit {
 
     if (existingUser) {
       this.logger.warn(`Registration attempt with existing email: ${dto.email}`);
-      throw new ConflictException('User with this email already exists');
+      throw new ConflictException({
+        message: 'User with this email already exists',
+        context: {
+          email: dto.email,
+          suggestion: 'Try logging in instead',
+          action: 'LOGIN',
+        },
+      });
     }
 
     // Hash password
@@ -755,7 +762,14 @@ export class AuthService implements OnModuleInit {
   private async checkAccountStatus(user: any): Promise<void> {
     // Check if account is inactive
     if (user.status === UserStatus.INACTIVE) {
-      throw new UnauthorizedException('Account is inactive');
+      throw new UnauthorizedException({
+        message: 'Your account has been deactivated',
+        context: {
+          reason: 'Deactivated by administrator',
+          action: 'CONTACT_ADMIN',
+          suggestion: 'Contact your organization administrator',
+        },
+      });
     }
 
     // Check if account is locked
@@ -774,12 +788,25 @@ export class AuthService implements OnModuleInit {
 
         this.logger.log(`Account automatically unlocked for user: ${user.id}`);
       } else {
-        const lockedUntilStr = user.lockedUntil
-          ? user.lockedUntil.toISOString()
-          : 'unknown';
-        throw new UnauthorizedException(
-          `Account is locked until ${lockedUntilStr}`,
-        );
+        const now = new Date();
+        const lockedUntil = user.lockedUntil ? new Date(user.lockedUntil) : now;
+        const minutesRemaining = Math.ceil((lockedUntil.getTime() - now.getTime()) / 60000);
+        const unlockTime = lockedUntil.toLocaleTimeString('en-US', {
+          hour: '2-digit',
+          minute: '2-digit',
+        });
+
+        throw new UnauthorizedException({
+          message: `Account locked for ${minutesRemaining} more minutes (until ${unlockTime})`,
+          context: {
+            lockedUntil: lockedUntil.toISOString(),
+            minutesRemaining,
+            unlockTime,
+            reason: 'Multiple failed login attempts',
+            failedAttempts: user.failedLoginAttempts,
+            suggestion: `Wait ${minutesRemaining} minutes or contact support for immediate access`,
+          },
+        });
       }
     }
   }

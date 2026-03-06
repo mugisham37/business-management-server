@@ -135,9 +135,23 @@ export class BranchService {
 
     // Check if manager is already assigned to another branch
     if (user.branchId && user.branchId !== branchId) {
-      throw new BadRequestException(
-        'Manager is already assigned to another branch',
-      );
+      const currentBranch = await this.prisma.branches.findUnique({
+        where: { id: user.branchId },
+        select: { name: true, code: true },
+      });
+
+      throw new BadRequestException({
+        message: `Manager already assigned to "${currentBranch?.name || 'another'}" branch`,
+        context: {
+          currentBranch: {
+            id: user.branchId,
+            name: currentBranch?.name,
+            code: currentBranch?.code,
+          },
+          suggestion: `Unassign from "${currentBranch?.name || 'current branch'}" first`,
+          action: 'UNASSIGN_FIRST',
+        },
+      });
     }
 
     // Update branch and user in a transaction

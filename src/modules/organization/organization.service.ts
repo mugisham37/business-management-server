@@ -33,7 +33,19 @@ export class OrganizationService {
     });
 
     if (existing) {
-      throw new BadRequestException('Organization name already exists');
+      throw new BadRequestException({
+        message: `Organization name "${dto.name}" is already registered`,
+        context: {
+          organizationName: dto.name,
+          suggestion: `Try "${dto.name} 2" or "${dto.name} Inc"`,
+          alternatives: [
+            `${dto.name} - [Your City]`,
+            `${dto.name} [Industry]`,
+            `${dto.name} Group`,
+          ],
+          action: 'CHOOSE_DIFFERENT_NAME',
+        },
+      });
     }
 
     // Create organization
@@ -121,7 +133,19 @@ export class OrganizationService {
       });
 
       if (nameExists) {
-        throw new BadRequestException('Organization name already exists');
+        throw new BadRequestException({
+          message: `Organization name "${dto.name}" is already registered`,
+          context: {
+            organizationName: dto.name,
+            suggestion: `Try "${dto.name} 2" or "${dto.name} Inc"`,
+            alternatives: [
+              `${dto.name} - [Your City]`,
+              `${dto.name} [Industry]`,
+              `${dto.name} Group`,
+            ],
+            action: 'CHOOSE_DIFFERENT_NAME',
+          },
+        });
       }
     }
 

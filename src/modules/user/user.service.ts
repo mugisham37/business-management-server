@@ -478,33 +478,60 @@ export class UserService {
      */
     private validatePasswordStrength(password: string): void {
       if (password.length < 8) {
-        throw new BadRequestException(
-          'Password must be at least 8 characters long',
-        );
+        throw new BadRequestException({
+          message: `Password too short: ${password.length} characters (need 8)`,
+          context: {
+            currentLength: password.length,
+            requiredLength: 8,
+            missing: 8 - password.length,
+            suggestion: `Add ${8 - password.length} more character${8 - password.length > 1 ? 's' : ''}`,
+          },
+        });
       }
 
       if (!/[A-Z]/.test(password)) {
-        throw new BadRequestException(
-          'Password must contain at least one uppercase letter',
-        );
+        throw new BadRequestException({
+          message: 'Password needs at least one uppercase letter (A-Z)',
+          context: {
+            requirement: 'uppercase',
+            example: 'Password123! or MyP@ssw0rd',
+            suggestion: 'Capitalize the first letter or add an uppercase letter',
+          },
+        });
       }
 
       if (!/[a-z]/.test(password)) {
-        throw new BadRequestException(
-          'Password must contain at least one lowercase letter',
-        );
+        throw new BadRequestException({
+          message: 'Password needs at least one lowercase letter (a-z)',
+          context: {
+            requirement: 'lowercase',
+            example: 'Password123! or MyP@ssw0rd',
+            suggestion: 'Add a lowercase letter',
+          },
+        });
       }
 
       if (!/[0-9]/.test(password)) {
-        throw new BadRequestException(
-          'Password must contain at least one number',
-        );
+        throw new BadRequestException({
+          message: 'Password needs at least one number (0-9)',
+          context: {
+            requirement: 'number',
+            example: 'Password1! or MyP@ssw0rd2024',
+            suggestion: 'Add a number at the end or anywhere in the password',
+          },
+        });
       }
 
       if (!/[!@#$%^&*()_+\-=\[\]{};':"\\|,.<>\/?]/.test(password)) {
-        throw new BadRequestException(
-          'Password must contain at least one special character',
-        );
+        throw new BadRequestException({
+          message: 'Password needs at least one special character',
+          context: {
+            requirement: 'special',
+            allowed: '! @ # $ % ^ & * ( ) - _ = + [ ] { } ; : \' " | , . < > ? /',
+            example: 'Password1! or MyP@ssw0rd!',
+            suggestion: 'Add ! or @ or any special character',
+          },
+        });
       }
     }
 
@@ -513,8 +540,33 @@ export class UserService {
      * Requirement 14.2: 4-6 digits only
      */
     private validatePINFormat(pin: string): void {
-      if (!/^\d{4,6}$/.test(pin)) {
-        throw new BadRequestException('PIN must be 4-6 digits');
+      const length = pin.length;
+      const hasOnlyDigits = /^\d+$/.test(pin);
+
+      if (!hasOnlyDigits) {
+        throw new BadRequestException({
+          message: 'PIN must contain only numbers (0-9)',
+          context: {
+            hasLetters: /[a-zA-Z]/.test(pin),
+            hasSpecialChars: /[^a-zA-Z0-9]/.test(pin),
+            suggestion: 'Use only numbers like 1234 or 123456',
+            examples: ['1234', '12345', '123456'],
+          },
+        });
+      }
+
+      if (length < 4 || length > 6) {
+        throw new BadRequestException({
+          message: `PIN must be 4-6 digits (you entered ${length})`,
+          context: {
+            currentLength: length,
+            allowedRange: [4, 6],
+            suggestion: length < 4 
+              ? `Add ${4 - length} more digit${4 - length > 1 ? 's' : ''}`
+              : `Remove ${length - 6} digit${length - 6 > 1 ? 's' : ''}`,
+            examples: ['1234', '12345', '123456'],
+          },
+        });
       }
     }
 
