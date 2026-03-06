@@ -5,13 +5,18 @@ import {
   IsOptional,
   MinLength,
   Matches,
+  IsArray,
+  IsBoolean,
+  IsUrl,
 } from 'class-validator';
 import { OrganizationType } from '@prisma/client';
 
 /**
  * DTO for owner registration with email/password
+ * Includes comprehensive onboarding data
  */
 export class RegisterOwnerDto {
+  // Personal Information
   @IsEmail()
   email!: string;
 
@@ -29,14 +34,57 @@ export class RegisterOwnerDto {
   @IsString()
   lastName!: string;
 
+  // Organization Information
   @IsString()
   organizationName!: string;
 
-  @IsEnum(OrganizationType)
-  organizationType!: OrganizationType;
+  @IsString()
+  industry!: string;
+
+  @IsString()
+  companySize!: string;
 
   @IsOptional()
-  organizationSettings?: Record<string, any>;
+  @IsString()
+  website?: string;
+
+  // Business Operations
+  @IsString()
+  businessType!: string;
+
+  @IsArray()
+  @IsString({ each: true })
+  primaryActivities!: string[];
+
+  @IsString()
+  businessStage!: string;
+
+  // Business Goals
+  @IsArray()
+  @IsString({ each: true })
+  businessGoals!: string[];
+
+  @IsString()
+  timeline!: string;
+
+  // User Preferences
+  @IsString()
+  currency!: string;
+
+  @IsString()
+  timezone!: string;
+
+  @IsBoolean()
+  emailNotifications!: boolean;
+
+  @IsBoolean()
+  weeklyReports!: boolean;
+
+  @IsBoolean()
+  marketingUpdates!: boolean;
+
+  // Computed field (not from frontend)
+  organizationType?: OrganizationType;
 }
 
 /**

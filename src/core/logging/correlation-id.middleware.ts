@@ -36,8 +36,8 @@ export class CorrelationIdMiddleware implements NestMiddleware {
     // Set correlation ID in logger for this request
     this.logger.setCorrelationId(correlationId);
 
-    // Changed from debug to info so it shows with LOG_LEVEL=info
-    this.logger.info(`Request received with correlation ID: ${correlationId}`);
+    // Don't log here - let the HttpLoggingInterceptor handle all logging
+    // This avoids duplicate logs and allows proper filtering
 
     next();
   }

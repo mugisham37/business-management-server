@@ -10,7 +10,7 @@ import { PrismaService } from '../../core/database/prisma.service';
 import { TokenService } from './token.service';
 import { SessionService } from './session.service';
 import * as bcrypt from 'bcrypt';
-import { HierarchyLevel, UserStatus } from '@prisma/client';
+import { HierarchyLevel, UserStatus, OrganizationType } from '@prisma/client';
 import { RequestContext } from '../../common/types/user-context.type';
 import { RegisterOwnerDto, RegisterOwnerGoogleDto } from './dto/register-owner.dto';
 import { OrganizationService } from '../organization/organization.service';
@@ -77,7 +77,7 @@ export class AuthService implements OnModuleInit {
    * Requirement 14.1: Validate password strength
    * Requirement 1.6: Return access and refresh tokens
    *
-   * @param dto - Owner registration data
+   * @param dto - Owner registration data with comprehensive onboarding info
    * @param context - Request context (IP, user agent)
    * @returns Authentication response with tokens
    */
@@ -93,34 +93,52 @@ export class AuthService implements OnModuleInit {
     });
 
     if (existingUser) {
+      this.logger.warn(`Registration attempt with existing email: ${dto.email}`);
       throw new ConflictException('User with this email already exists');
     }
 
     // Hash password
     const passwordHash = await bcrypt.hash(dto.password, this.BCRYPT_ROUNDS);
 
-    // Create organization and user in a transaction
-    // Three-step process to handle circular dependency:
-    // 1. Create organization without owner
-    // 2. Create user with organizationId
-    // 3. Update organization to set ownerId
+    // Determine organization type from company size
+    const organizationType = this.determineOrganizationType(dto.companySize);
+
+    // Prepare organization settings with onboarding data
+    const organizationSettings = {
+      primaryActivities: dto.primaryActivities,
+      businessGoals: dto.businessGoals,
+      timeline: dto.timeline,
+      onboardingCompletedAt: new Date().toISOString(),
+    };
+
+    this.logger.debug(`Creating organization: ${dto.organizationName}, type: ${organizationType}`);
+
+    // Create organization, user, and preferences in a transaction
     const result = await this.prisma.$transaction(async (tx) => {
       const userId = uuidv4();
       const organizationId = uuidv4();
 
-      // Step 1: Create organization without owner
+      this.logger.debug(`Generated IDs - userId: ${userId}, organizationId: ${organizationId}`);
+
+      // Step 1: Create organization with onboarding data
       const organization = await tx.organizations.create({
         data: {
           id: organizationId,
           name: dto.organizationName,
-          type: dto.organizationType,
-          settings: dto.organizationSettings || {},
-          // ownerId omitted - will be set in step 3 to avoid circular dependency
+          type: organizationType,
+          industry: dto.industry,
+          companySize: dto.companySize,
+          website: dto.website || null,
+          businessType: dto.businessType,
+          businessStage: dto.businessStage,
+          settings: organizationSettings,
           updatedAt: new Date(),
-        } as any, // Type assertion needed due to circular dependency
+        },
       });
 
-      // Step 2: Create user with organizationId (organization now exists)
+      this.logger.debug(`Organization created: ${organization.id}`);
+
+      // Step 2: Create user with organizationId
       const user = await tx.users.create({
         data: {
           id: userId,
@@ -138,27 +156,70 @@ export class AuthService implements OnModuleInit {
         },
       });
 
-      // Step 3: Update organization to set owner (user now exists)
+      this.logger.debug(`User created: ${user.id}`);
+
+      // Step 3: Create user preferences
+      await tx.user_preferences.create({
+        data: {
+          id: uuidv4(),
+          userId: userId,
+          currency: dto.currency,
+          timezone: dto.timezone,
+          emailNotifications: dto.emailNotifications,
+          weeklyReports: dto.weeklyReports,
+          marketingUpdates: dto.marketingUpdates,
+          updatedAt: new Date(),
+        },
+      });
+
+      this.logger.debug(`User preferences created for: ${userId}`);
+
+      // Step 4: Update organization to set owner
       await tx.organizations.update({
         where: { id: organizationId },
         data: { ownerId: userId },
       });
 
+      this.logger.debug(`Organization owner set: ${userId}`);
+
       return { user, organization };
     });
 
     // Initialize owner permissions (outside transaction for better error handling)
-    await this.organizationService.initializeOwnerPermissions(
-      result.user.id,
-      result.organization.id,
-    );
+    try {
+      await this.organizationService.initializeOwnerPermissions(
+        result.user.id,
+        result.organization.id,
+      );
+      this.logger.debug(`Owner permissions initialized for: ${result.user.id}`);
+    } catch (error) {
+      this.logger.error(`Failed to initialize owner permissions: ${error instanceof Error ? error.message : 'Unknown error'}`);
+      // Don't fail registration if permissions fail - they can be fixed later
+    }
 
     this.logger.log(
-      `Owner registered successfully: ${result.user.id} for organization: ${result.organization.id}`,
+      `✅ Owner registered successfully: ${result.user.id} for organization: ${result.organization.id}`,
     );
 
     // Generate tokens and create session
     return this.createAuthResponse(result.user, context);
+  }
+
+  /**
+   * Determine organization type based on company size
+   * 
+   * @param companySize - Company size category
+   * @returns OrganizationType enum value
+   */
+  private determineOrganizationType(companySize: string): OrganizationType {
+    const sizeMap: Record<string, OrganizationType> = {
+      '1-10': OrganizationType.STARTUP,
+      '11-50': OrganizationType.SME,
+      '51-200': OrganizationType.SME,
+      '201-500': OrganizationType.ENTERPRISE,
+      '500+': OrganizationType.ENTERPRISE,
+    };
+    return sizeMap[companySize] || OrganizationType.SME;
   }
 
   /**

@@ -7,6 +7,8 @@ import {
   IsOptional,
   MinLength,
   Matches,
+  IsArray,
+  IsBoolean,
 } from 'class-validator';
 
 @ObjectType()
@@ -47,6 +49,7 @@ export class AuthResponse {
 
 @InputType()
 export class RegisterOwnerInput {
+  // Personal Information
   @Field()
   @IsEmail()
   email!: string;
@@ -68,17 +71,68 @@ export class RegisterOwnerInput {
   @IsString()
   lastName!: string;
 
+  // Organization Information
   @Field()
   @IsString()
   organizationName!: string;
 
   @Field()
   @IsString()
-  organizationType!: string;
+  industry!: string;
+
+  @Field()
+  @IsString()
+  companySize!: string;
 
   @Field(() => String, { nullable: true })
   @IsOptional()
-  organizationSettings?: string;
+  @IsString()
+  website?: string;
+
+  // Business Operations
+  @Field()
+  @IsString()
+  businessType!: string;
+
+  @Field(() => [String])
+  @IsArray()
+  @IsString({ each: true })
+  primaryActivities!: string[];
+
+  @Field()
+  @IsString()
+  businessStage!: string;
+
+  // Business Goals
+  @Field(() => [String])
+  @IsArray()
+  @IsString({ each: true })
+  businessGoals!: string[];
+
+  @Field()
+  @IsString()
+  timeline!: string;
+
+  // User Preferences
+  @Field()
+  @IsString()
+  currency!: string;
+
+  @Field()
+  @IsString()
+  timezone!: string;
+
+  @Field()
+  @IsBoolean()
+  emailNotifications!: boolean;
+
+  @Field()
+  @IsBoolean()
+  weeklyReports!: boolean;
+
+  @Field()
+  @IsBoolean()
+  marketingUpdates!: boolean;
 }
 
 @InputType()

@@ -308,13 +308,24 @@ input RefreshTokenInput {
 }
 
 input RegisterOwnerInput {
+  businessGoals: [String!]!
+  businessStage: String!
+  businessType: String!
+  companySize: String!
+  currency: String!
   email: String!
+  emailNotifications: Boolean!
   firstName: String!
+  industry: String!
   lastName: String!
+  marketingUpdates: Boolean!
   organizationName: String!
-  organizationSettings: String
-  organizationType: String!
   password: String!
+  primaryActivities: [String!]!
+  timeline: String!
+  timezone: String!
+  website: String
+  weeklyReports: Boolean!
 }
 
 input RevokePermissionsInput {

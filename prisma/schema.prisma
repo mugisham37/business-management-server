@@ -100,6 +100,11 @@ model organizations {
   status                                    OrganizationStatus    @default(ACTIVE)
   settings                                  Json?
   ownerId                                   String?               @unique
+  industry                                  String?
+  companySize                               String?
+  website                                   String?
+  businessType                              String?
+  businessStage                             String?
   createdAt                                 DateTime              @default(now())
   updatedAt                                 DateTime
   audit_logs                                audit_logs[]
@@ -259,6 +264,21 @@ model tenants {
   @@index([slug])
 }
 
+model user_preferences {
+  id                 String   @id
+  userId             String   @unique
+  currency           String   @default("USD")
+  timezone           String   @default("UTC")
+  emailNotifications Boolean  @default(true)
+  weeklyReports      Boolean  @default(true)
+  marketingUpdates   Boolean  @default(false)
+  createdAt          DateTime @default(now())
+  updatedAt          DateTime
+  users              users    @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+}
+
 model user_roles {
   userId     String
   roleId     String
@@ -303,6 +323,7 @@ model users {
   permission_snapshots                                       permission_snapshots[]
   sessions                                                   sessions[]
   staff_profiles                                             staff_profiles?
+  user_preferences                                           user_preferences?
   user_roles                                                 user_roles[]
   branches                                                   branches?              @relation(fields: [branchId], references: [id])
   users                                                      users?                 @relation("usersTousers", fields: [createdById], references: [id])

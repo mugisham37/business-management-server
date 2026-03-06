@@ -48,7 +48,7 @@ export class AuthResolver extends BaseResolver {
    *
    * Requirement 1.1, 1.2: Create organization and owner user with full permissions
    *
-   * @param input - Owner registration data
+   * @param input - Owner registration data with comprehensive onboarding info
    * @param context - GraphQL context with request information
    * @returns Authentication response with tokens
    */
@@ -58,26 +58,53 @@ export class AuthResolver extends BaseResolver {
     @Args('input') input: RegisterOwnerInput,
     @Context() context: any,
   ): Promise<AuthResponse> {
+    // Enhanced logging for debugging
+    this.logger.log(`🔵 Registration request received for: ${input.email}`);
+    this.logger.debug(`Registration details: ${JSON.stringify({
+      email: input.email,
+      organizationName: input.organizationName,
+      industry: input.industry,
+      companySize: input.companySize,
+      businessType: input.businessType,
+      businessStage: input.businessStage,
+      timestamp: new Date().toISOString(),
+    })}`);
+
     this.logOperation('registerOwner', { email: input.email });
 
     const requestContext = this.extractRequestContext(context);
 
-    const result = await this.authService.registerOwner(
-      {
-        email: input.email,
-        password: input.password,
-        firstName: input.firstName,
-        lastName: input.lastName,
-        organizationName: input.organizationName,
-        organizationType: input.organizationType as OrganizationType,
-        organizationSettings: input.organizationSettings
-          ? JSON.parse(input.organizationSettings)
-          : undefined,
-      },
-      requestContext,
-    );
+    try {
+      const result = await this.authService.registerOwner(
+        {
+          email: input.email,
+          password: input.password,
+          firstName: input.firstName,
+          lastName: input.lastName,
+          organizationName: input.organizationName,
+          industry: input.industry,
+          companySize: input.companySize,
+          website: input.website,
+          businessType: input.businessType,
+          primaryActivities: input.primaryActivities,
+          businessStage: input.businessStage,
+          businessGoals: input.businessGoals,
+          timeline: input.timeline,
+          currency: input.currency,
+          timezone: input.timezone,
+          emailNotifications: input.emailNotifications,
+          weeklyReports: input.weeklyReports,
+          marketingUpdates: input.marketingUpdates,
+        },
+        requestContext,
+      );
 
-    return result;
+      this.logger.log(`✅ Registration successful for: ${input.email}, userId: ${result.user.id}`);
+      return result;
+    } catch (error) {
+      this.logger.error(`❌ Registration failed for: ${input.email}`, error instanceof Error ? error.stack : error);
+      throw error;
+    }
   }
 
   /**

@@ -9,6 +9,7 @@ import { CacheModule } from './core/cache/cache.module';
 import { RequestContextInterceptor } from './core/context/request-context.interceptor';
 import { HttpLoggingInterceptor } from './core/logging/interceptors/http-logging.interceptor';
 import { HttpExceptionFilter } from './core/logging/filters/http-exception.filter';
+import { GraphQLExceptionFilter } from './api/graphql/filters/graphql-exception.filter';
 import { HealthModule } from './health/health.module';
 import { GrpcModule } from './api/grpc/grpc.module';
 import { GraphQLModule } from './api/graphql/graphql.module';
@@ -57,6 +58,10 @@ import { ResilienceModule } from './core/resilience';
     {
       provide: APP_FILTER,
       useClass: HttpExceptionFilter,
+    },
+    {
+      provide: APP_FILTER,
+      useClass: GraphQLExceptionFilter,
     },
     SanitizationMiddleware,
   ],

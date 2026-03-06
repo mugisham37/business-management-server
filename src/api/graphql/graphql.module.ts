@@ -29,11 +29,20 @@ import { AuditResolver } from './resolvers/audit.resolver';
       playground: true,
       introspection: true,
       formatError: (error) => {
+        // Extract correlationId from request context if available
+        const correlationId = (error as any)?.extensions?.exception?.response?.correlationId 
+          || (error as any)?.extensions?.correlationId
+          || 'unknown';
+        
         return {
           message: error?.message || 'An error occurred',
           code: error?.extensions?.code || 'INTERNAL_SERVER_ERROR',
           path: error?.path || [],
           timestamp: new Date().toISOString(),
+          extensions: {
+            ...error?.extensions,
+            correlationId,
+          },
         };
       },
       context: ({ req }: { req: any }) => ({ req }),

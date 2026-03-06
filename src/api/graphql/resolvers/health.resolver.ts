@@ -20,17 +20,37 @@ export class HealthResolver extends BaseResolver {
   })
   async health(): Promise<HealthCheckResponse> {
     try {
-      const result = await this.healthService.check([
-        () => this.databaseHealth.isHealthy('database'),
-        () => this.redisHealth.isHealthy('cache'),
-        () => this.redisHealth.isHealthy('queue'),
+      // Run health checks in parallel for better performance
+      const [databaseResult, cacheResult, queueResult] = await Promise.allSettled([
+        this.databaseHealth.isHealthy('database'),
+        this.redisHealth.isHealthy('cache'),
+        this.redisHealth.isHealthy('queue'),
       ]);
 
+      // Extract results or use defaults for failures
+      const databaseInfo = databaseResult.status === 'fulfilled' 
+        ? databaseResult.value.database 
+        : { status: 'down', message: 'Health check failed' };
+      
+      const cacheInfo = cacheResult.status === 'fulfilled'
+        ? cacheResult.value.cache
+        : { status: 'down', message: 'Health check failed' };
+      
+      const queueInfo = queueResult.status === 'fulfilled'
+        ? queueResult.value.queue
+        : { status: 'down', message: 'Health check failed' };
+
+      // Determine overall status
+      const allHealthy = 
+        databaseInfo.status === 'up' &&
+        cacheInfo.status === 'up' &&
+        queueInfo.status === 'up';
+
       return {
-        status: result.status,
-        database: this.mapServiceHealth(result.info?.database),
-        cache: this.mapServiceHealth(result.info?.cache),
-        queue: this.mapServiceHealth(result.info?.queue),
+        status: allHealthy ? 'ok' : 'error',
+        database: this.mapServiceHealth(databaseInfo),
+        cache: this.mapServiceHealth(cacheInfo),
+        queue: this.mapServiceHealth(queueInfo),
         timestamp: new Date().toISOString(),
       };
     } catch (error) {
